@@ -10,7 +10,11 @@ from .db import get_conn
 
 
 def load_pool():
-    """Trae los tracks que tienen camelot, bpm y energy_score cargados."""
+    """Trae los tracks que tienen camelot, bpm y energy_score cargados.
+
+    Usa un solo representante por grupo de duplicados (is_representative). Si todavia
+    no se corrio 'dedupe' (is_representative NULL), no filtra nada: se comporta como antes.
+    """
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("""
@@ -19,6 +23,7 @@ def load_pool():
         JOIN dbo.track_features f ON f.track_id = t.track_id
         WHERE t.camelot IS NOT NULL AND t.bpm IS NOT NULL
               AND f.energy_score IS NOT NULL
+              AND (t.is_representative = 1 OR t.is_representative IS NULL)
     """)
     pool = [dict(track_id=r[0], title=r[1], artist=r[2], bpm=float(r[3]),
                  camelot=r[4], energy=float(r[5])) for r in cur.fetchall()]

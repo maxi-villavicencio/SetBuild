@@ -92,6 +92,18 @@ Para elegir el próximo track, en orden:
   el motor. El análisis de audio en la versión pública se replantea aparte (client-side o
   agente local).
 
+## Casos pendientes de la de-duplicacion
+
+- **Tracks con titulo vacio.** Algunos tracks vienen sin titulo en Rekordbox (ej. varias
+  versiones de "Gravitational Arch Of 10" de Vapourspace, una con `title` vacio). Hoy el
+  dedupe los deja como grupo propio (no se agrupan ni entre si ni con versiones tituladas),
+  a proposito, para no arriesgar falsos positivos. Queda pendiente resolverlos en un sprint
+  futuro (posible via fingerprint de audio, o completando el titulo desde el file_path).
+- **Ediciones de distinta duracion del mismo tema.** Cuando existen varios edits del mismo
+  track con duraciones bien distintas (ej. 285s vs 403s vs 427s), el refuerzo acustico NO los
+  une (exige duracion +/-3%), y con razon: son masters distintos. Unificar "todas las versiones
+  de un titulo" es otra decision de producto (agrupar por titulo base), no resuelta todavia.
+
 ## Roadmap por fases
 
 - **Fase 0 — Repo y setup**: GitHub, `.gitignore`, estructura, Claude Code enlazado, `CLAUDE.md`.

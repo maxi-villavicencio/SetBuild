@@ -15,6 +15,8 @@ CREATE TABLE dbo.tracks (
     key_musical    NVARCHAR(20),                     -- notacion musical (ej: "Am", "C", "F#m")
     camelot        NVARCHAR(4),                      -- mapeado desde key_musical (ej: "8A")
     rating         INT,                              -- estrellas 0-5
+    dup_group_id   INT,                              -- id del grupo de duplicados (= track_id del representante); lo llena 'dedupe'
+    is_representative BIT,                            -- 1 si es el track elegido del grupo; NULL = sin deduplicar todavia
     updated_at     DATETIME2 DEFAULT SYSUTCDATETIME()
 );
 
@@ -45,3 +47,10 @@ CREATE TABLE dbo.set_tracks (
     track_id INT REFERENCES dbo.tracks(track_id),
     PRIMARY KEY (set_id, position)
 );
+
+-- Migraciones idempotentes para bases ya creadas (init-db las aplica sin romper).
+-- Sprint 1.5 - de-duplicacion: columnas de agrupamiento en dbo.tracks.
+IF COL_LENGTH('dbo.tracks', 'dup_group_id') IS NULL
+    ALTER TABLE dbo.tracks ADD dup_group_id INT NULL;
+IF COL_LENGTH('dbo.tracks', 'is_representative') IS NULL
+    ALTER TABLE dbo.tracks ADD is_representative BIT NULL;
