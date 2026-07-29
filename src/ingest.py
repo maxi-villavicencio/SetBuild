@@ -7,6 +7,7 @@ Requisitos: Rekordbox cerrado, y la clave cacheada (una vez):
 from pyrekordbox import Rekordbox6Database
 
 from .camelot import key_to_camelot
+from .derive import collection_of, quality_of
 from .db import get_conn
 
 
@@ -44,18 +45,21 @@ def fetch_rekordbox_tracks():
         key_name = None
         if key_obj is not None:
             key_name = getattr(key_obj, "ScaleName", None) or str(key_obj)
+        file_path = getattr(c, "FolderPath", None)
         rows.append({
             "rb_content_id": str(getattr(c, "ID", "")),
             "title": getattr(c, "Title", None),
             "artist": _name_of(getattr(c, "Artist", None)),
             "album": _name_of(getattr(c, "Album", None)),
             "genre": _name_of(getattr(c, "Genre", None)),
-            "file_path": getattr(c, "FolderPath", None),
+            "file_path": file_path,
             "duration_sec": _f(getattr(c, "Length", None)),
             "bpm": _bpm(c),
             "key_musical": key_name,
             "camelot": key_to_camelot(key_name),
             "rating": _stars(getattr(c, "Rating", None)),
+            "quality": quality_of(file_path),
+            "collection": collection_of(file_path),
         })
     return rows
 
@@ -66,11 +70,12 @@ USING (SELECT ? AS rb_content_id) AS s
 ON t.rb_content_id = s.rb_content_id
 WHEN MATCHED THEN UPDATE SET
     title=?, artist=?, album=?, genre=?, file_path=?, duration_sec=?,
-    bpm=?, key_musical=?, camelot=?, rating=?, updated_at=SYSUTCDATETIME()
+    bpm=?, key_musical=?, camelot=?, rating=?, quality=?, collection=?,
+    updated_at=SYSUTCDATETIME()
 WHEN NOT MATCHED THEN INSERT
     (rb_content_id, title, artist, album, genre, file_path, duration_sec,
-     bpm, key_musical, camelot, rating)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?);
+     bpm, key_musical, camelot, rating, quality, collection)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);
 """
 
 
@@ -84,10 +89,11 @@ def ingest():
             # UPDATE
             r["title"], r["artist"], r["album"], r["genre"], r["file_path"],
             r["duration_sec"], r["bpm"], r["key_musical"], r["camelot"], r["rating"],
+            r["quality"], r["collection"],
             # INSERT
             r["rb_content_id"], r["title"], r["artist"], r["album"], r["genre"],
             r["file_path"], r["duration_sec"], r["bpm"], r["key_musical"],
-            r["camelot"], r["rating"],
+            r["camelot"], r["rating"], r["quality"], r["collection"],
         )
     conn.commit()
     conn.close()

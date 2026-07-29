@@ -17,6 +17,8 @@ CREATE TABLE dbo.tracks (
     rating         INT,                              -- estrellas 0-5
     dup_group_id   INT,                              -- id del grupo de duplicados (= track_id del representante); lo llena 'dedupe'
     is_representative BIT,                            -- 1 si es el track elegido del grupo; NULL = sin deduplicar todavia
+    quality        NVARCHAR(20),                     -- derivado de la extension: 'lossless' | 'compressed' | NULL (sin path)
+    collection     NVARCHAR(50),                     -- derivado de la carpeta: 'Maxi' | 'Zoe' | NULL (indeterminada)
     updated_at     DATETIME2 DEFAULT SYSUTCDATETIME()
 );
 
@@ -54,3 +56,9 @@ IF COL_LENGTH('dbo.tracks', 'dup_group_id') IS NULL
     ALTER TABLE dbo.tracks ADD dup_group_id INT NULL;
 IF COL_LENGTH('dbo.tracks', 'is_representative') IS NULL
     ALTER TABLE dbo.tracks ADD is_representative BIT NULL;
+
+-- Sprint 2 - campos derivados del file_path.
+IF COL_LENGTH('dbo.tracks', 'quality') IS NULL
+    ALTER TABLE dbo.tracks ADD quality NVARCHAR(20) NULL;
+IF COL_LENGTH('dbo.tracks', 'collection') IS NULL
+    ALTER TABLE dbo.tracks ADD collection NVARCHAR(50) NULL;

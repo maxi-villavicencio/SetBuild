@@ -13,6 +13,7 @@ import os
 from . import analyze as analyze_mod
 from . import build_set as build_mod
 from . import dedupe as dedupe_mod
+from . import derive as derive_mod
 from . import ingest as ingest_mod
 from .db import run_sql_file
 
@@ -33,6 +34,9 @@ def main():
 
     p_dd = sub.add_parser("dedupe", help="Agrupa tracks que son el mismo tema (de-duplicacion)")
     p_dd.add_argument("--report", action="store_true", help="Imprime totales y ejemplos de grupos")
+
+    p_df = sub.add_parser("derive-fields", help="Rellena quality/collection desde el file_path")
+    p_df.add_argument("--report", action="store_true", help="Cuenta tracks por quality y collection")
 
     p_b = sub.add_parser("build", help="Arma un set")
     p_b.add_argument("--length", type=int, default=15)
@@ -55,6 +59,8 @@ def main():
         analyze_mod.recompute_energy_scores()
     elif args.cmd == "dedupe":
         dedupe_mod.dedupe(report=args.report)
+    elif args.cmd == "derive-fields":
+        derive_mod.backfill(report=args.report)
     elif args.cmd == "build":
         order = build_mod.build(length=args.length, bpm_tol=args.bpm_tol,
                                 peak_pos=args.peak, energy_boost=args.energy_boost,
