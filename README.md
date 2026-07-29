@@ -1,0 +1,74 @@
+# DJ Set Builder
+
+Arma sets de DJ ordenados por una curva de energía, respetando mezcla armónica
+(rueda de Camelot) y transiciones de BPM suaves. Los datos de la colección salen de
+**Rekordbox** (BPM y key ya calculados) y el **score de energía/groove** se computa
+localmente con `librosa` sobre tus archivos AIFF. Todo offline y gratis.
+
+## Cómo funciona
+
+```
+Rekordbox master.db  ──(pyrekordbox)──►  tabla `tracks`  (title, artist, bpm, key, camelot)
+                                                │
+tus AIFF  ──(librosa)──►  tabla `track_features`  (rms, onset_rate, low_band, pulse_clarity)
+                                                │
+                                    recompute-energy  ──►  energy_score 1..10
+                                                │
+                                          build  ──►  set ordenado por curva de energía
+```
+
+- **BPM y key**: vienen de Rekordbox, no se recalculan (su detección es mejor).
+- **Energía/groove**: es el diferencial; lo derivamos nosotros porque Spotify dio de
+  baja sus audio-features en nov 2024 y no hay reemplazo oficial.
+
+## Setup
+
+1. **SQL Server** corriendo. Copiá `.env.example` a `.env` y completá la conexión
+   (o exportá esas variables en tu shell).
+2. Instalá dependencias:
+   ```
+   pip install -r requirements.txt
+   ```
+3. **Clave de Rekordbox** (una sola vez, si estás en Rekordbox 6.6.5 o posterior):
+   ```
+   python -m pyrekordbox download-key
+   ```
+4. Hacé un backup de tu biblioteca en Rekordbox (File > Library > Backup Library)
+   y **cerrá Rekordbox** antes de ingestar.
+
+## Uso
+
+```
+python -m src.cli init-db            # crea las tablas
+python -m src.cli ingest             # Rekordbox -> tracks
+python -m src.cli analyze            # librosa -> features (paso lento, corre una vez)
+python -m src.cli recompute-energy   # features -> energy_score 1..10
+python -m src.cli build --length 15 --save "Warmup Sabado"
+```
+
+Opciones de `build`:
+- `--length N` cantidad de tracks
+- `--bpm-tol 0.06` tolerancia de BPM entre temas consecutivos (6%)
+- `--peak 0.7` dónde cae el pico de energía (0..1)
+- `--energy-boost` habilita el salto +7 de Camelot (subir una quinta)
+- `--start <track_id>` fija el primer track
+
+## Estructura
+
+```
+src/
+  db.py         conexión a SQL Server
+  camelot.py    mapeo key -> Camelot + reglas de compatibilidad
+  ingest.py     lee la master.db de Rekordbox
+  analyze.py    features de audio + energy_score
+  build_set.py  armador greedy sobre la curva de energía
+  cli.py        entrypoint
+sql/schema.sql  esquema de tablas
+```
+
+## Próximos pasos (para Claude Code)
+
+- Afinar los pesos del `energy_score` en `analyze.WEIGHTS` a tu oído.
+- Cachear los features de audio a disco para no reanalizar entre runs.
+- Reemplazar el greedy por beam search sobre un grafo de compatibilidad.
+- Exportar el set generado como playlist de Rekordbox (XML) para reimportarlo.

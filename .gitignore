@@ -1,0 +1,41 @@
+# Entorno / secretos
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# Node / frontend (para cuando se sume la web)
+node_modules/
+dist/
+build/
+.vite/
+
+# Audio y datos locales (nunca commitear la biblioteca)
+*.aiff
+*.aif
+*.wav
+*.mp3
+*.flac
+
+# Bases / caches locales
+*.db
+*.sqlite
+*.sqlite3
+
+# Rekordbox (por las dudas, no versionar nada exportado)
+*.xml
+rekordbox_key*
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,6 @@
+pyrekordbox>=0.4
+librosa>=0.10
+soundfile
+numpy
+pyodbc
+python-dotenv
