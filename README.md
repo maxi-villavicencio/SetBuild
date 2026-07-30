@@ -76,6 +76,23 @@ http://127.0.0.1:8000/tracks
 http://127.0.0.1:8000/tracks?only_representatives=true&collection=Maxi
 ```
 
+## Frontend (Fase 2)
+
+Interfaz web en React (Vite) para **ver la biblioteca**: tabla ordenable por columna
+(energía, BPM, etc.), filtros de calidad/colección y toggle "solo representantes", con
+contador de tracks. Consume el endpoint `GET /tracks`.
+
+Requisito: tener el backend corriendo (`uvicorn app.main:app`). Después:
+
+```
+cd frontend
+npm install
+npm run dev
+```
+
+Abre en http://localhost:5173. Si tu backend no está en `http://127.0.0.1:8000`, seteá
+`VITE_API_URL` (ej. en `frontend/.env`: `VITE_API_URL=http://127.0.0.1:8001`).
+
 ## Estructura
 
 ```
@@ -91,6 +108,7 @@ src/
   cli.py        entrypoint
 app/
   main.py       backend FastAPI (GET /health, GET /tracks)
+frontend/       app React + Vite (ver la biblioteca)
 sql/schema.sql  esquema de tablas
 ```
 

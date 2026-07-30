@@ -10,6 +10,7 @@ from typing import List, Optional
 from typing import Literal
 
 from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from src.library import get_tracks
@@ -18,6 +19,17 @@ app = FastAPI(
     title="DJ Set Builder API",
     description="Backend local-first. Solo lectura sobre la biblioteca (Rekordbox + features).",
     version="0.1.0",
+)
+
+# CORS para el frontend de Vite en desarrollo (puerto 5173).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_methods=["GET"],
+    allow_headers=["*"],
 )
 
 

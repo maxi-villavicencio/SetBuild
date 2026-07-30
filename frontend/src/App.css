@@ -1,0 +1,177 @@
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.app-header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.app-header .subtitle {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+/* --- Barra de filtros --- */
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.filters .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filters label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+}
+
+.filters select {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 14px;
+  min-width: 140px;
+}
+
+.filters select:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  align-self: flex-end;
+  padding-bottom: 6px;
+}
+
+.toggle input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+
+.filters .spacer { flex: 1; }
+
+.counter {
+  font-size: 14px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  align-self: flex-end;
+  padding-bottom: 6px;
+}
+.counter strong { color: var(--text); }
+
+/* --- Tabla --- */
+.table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel-2);
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+thead th.num { text-align: right; }
+thead th:hover { color: var(--text); }
+
+thead th .arrow { color: var(--accent); margin-left: 4px; }
+
+tbody td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+tbody td.num { text-align: right; }
+
+tbody tr:hover { background: var(--panel); }
+tbody tr:last-child td { border-bottom: none; }
+
+.dim { color: var(--text-dim); }
+
+.badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+.badge.lossless { color: var(--lossless); border-color: color-mix(in srgb, var(--lossless) 40%, transparent); }
+.badge.compressed { color: var(--compressed); border-color: color-mix(in srgb, var(--compressed) 40%, transparent); }
+
+.energy-cell { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.energy-bar {
+  width: 46px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.energy-bar > span { display: block; height: 100%; background: var(--accent); }
+
+/* --- Estados --- */
+.state {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-dim);
+}
+.state.error { color: #f0a3a3; }
+.state button {
+  margin-top: 14px;
+  background: var(--accent-dim);
+  color: var(--text);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.state button:hover { filter: brightness(1.15); }
