@@ -9,22 +9,49 @@ from .camelot import is_compatible
 from .db import get_conn
 
 
-def load_pool():
+def _resolve_filters(mode, quality, collection):
+    """Resuelve los filtros efectivos (quality, collection) a partir del modo y los overrides.
+
+    El modo fija los defaults; los flags sueltos pisan por dimension:
+      - limpio   -> quality=lossless, collection=Maxi (tu material curado)
+      - realista -> sin filtro (None), tolera datos faltantes (degradacion con gracia)
+    """
+    if mode == "limpio":
+        eff_q, eff_c = "lossless", "Maxi"
+    else:  # realista
+        eff_q, eff_c = None, None
+    if quality is not None:
+        eff_q = quality
+    if collection is not None:
+        eff_c = collection
+    return eff_q, eff_c
+
+
+def load_pool(quality=None, collection=None):
     """Trae los tracks que tienen camelot, bpm y energy_score cargados.
 
     Usa un solo representante por grupo de duplicados (is_representative). Si todavia
     no se corrio 'dedupe' (is_representative NULL), no filtra nada: se comporta como antes.
+    Los filtros quality/collection son opcionales; si son None no filtran esa dimension
+    (asi los tracks con quality/collection nulos entran igual: degradacion con gracia).
     """
+    where = ["t.camelot IS NOT NULL", "t.bpm IS NOT NULL", "f.energy_score IS NOT NULL",
+             "(t.is_representative = 1 OR t.is_representative IS NULL)"]
+    params = []
+    if quality is not None:
+        where.append("t.quality = ?")
+        params.append(quality)
+    if collection is not None:
+        where.append("t.collection = ?")
+        params.append(collection)
+
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("""
         SELECT t.track_id, t.title, t.artist, t.bpm, t.camelot, f.energy_score
         FROM dbo.tracks t
         JOIN dbo.track_features f ON f.track_id = t.track_id
-        WHERE t.camelot IS NOT NULL AND t.bpm IS NOT NULL
-              AND f.energy_score IS NOT NULL
-              AND (t.is_representative = 1 OR t.is_representative IS NULL)
-    """)
+        WHERE """ + " AND ".join(where), *params)
     pool = [dict(track_id=r[0], title=r[1], artist=r[2], bpm=float(r[3]),
                  camelot=r[4], energy=float(r[5])) for r in cur.fetchall()]
     conn.close()
@@ -43,13 +70,21 @@ def target_curve(n, peak_pos=0.7, start=2.0, peak=9.0, end=4.0):
     return curve
 
 
-def build(length=15, bpm_tol=0.06, peak_pos=0.7, energy_boost=False, start_track_id=None):
-    """Construye un set de `length` tracks. bpm_tol es la tolerancia relativa de BPM (0.06 = 6%)."""
-    pool = load_pool()
+def build(length=15, bpm_tol=0.06, peak_pos=0.7, energy_boost=False, start_track_id=None,
+          mode="limpio", quality=None, collection=None):
+    """Construye un set de `length` tracks. bpm_tol es la tolerancia relativa de BPM (0.06 = 6%).
+
+    mode: "limpio" (solo lossless de Maxi) o "realista" (todo). quality/collection son
+    overrides opcionales que pisan el modo por dimension.
+    """
+    eff_q, eff_c = _resolve_filters(mode, quality, collection)
+    pool = load_pool(quality=eff_q, collection=eff_c)
+    print(f"Modo: {mode} (quality={eff_q or 'cualquiera'}, collection={eff_c or 'cualquiera'}) "
+          f"— pool: {len(pool)} tracks")
     if len(pool) < length:
         length = len(pool)
     if not pool:
-        print("Pool vacio. Necesitas ingest + analyze + recompute-energy primero.")
+        print("Pool vacio. Revisa el modo/filtros, o corre ingest + analyze + recompute-energy.")
         return []
 
     curve = target_curve(length, peak_pos=peak_pos)

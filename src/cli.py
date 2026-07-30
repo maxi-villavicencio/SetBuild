@@ -47,6 +47,12 @@ def main():
     p_b.add_argument("--energy-boost", action="store_true", help="Permite el salto +7 de Camelot")
     p_b.add_argument("--start", type=int, default=None, help="track_id inicial")
     p_b.add_argument("--save", type=str, default=None, help="Guarda el set con este nombre")
+    p_b.add_argument("--mode", choices=["limpio", "realista"], default="limpio",
+                     help="limpio=solo lossless de Maxi (default); realista=todo, tolera faltantes")
+    p_b.add_argument("--quality", choices=["lossless", "compressed"], default=None,
+                     help="Override de calidad (pisa el modo)")
+    p_b.add_argument("--collection", choices=["Maxi", "Zoe"], default=None,
+                     help="Override de coleccion (pisa el modo)")
 
     args = parser.parse_args()
 
@@ -69,7 +75,8 @@ def main():
     elif args.cmd == "build":
         order = build_mod.build(length=args.length, bpm_tol=args.bpm_tol,
                                 peak_pos=args.peak, energy_boost=args.energy_boost,
-                                start_track_id=args.start)
+                                start_track_id=args.start, mode=args.mode,
+                                quality=args.quality, collection=args.collection)
         build_mod.print_set(order)
         if args.save and order:
             build_mod.save_set(order, args.save)
