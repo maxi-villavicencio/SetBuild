@@ -19,4 +19,20 @@ export async function getTracks({ quality, collection, onlyRepresentatives } = {
   return res.json()
 }
 
+// Candidatos para el siguiente track del set, dado el track actual.
+// opts: { trackId, limit, targetEnergy, mode }
+export async function getNextCandidates({ trackId, limit, targetEnergy, mode } = {}) {
+  const params = new URLSearchParams()
+  params.set('track_id', String(trackId))
+  if (limit) params.set('limit', String(limit))
+  if (targetEnergy != null) params.set('target_energy', String(targetEnergy))
+  if (mode) params.set('mode', mode)
+
+  const res = await fetch(`${API_URL}/next-candidates?${params.toString()}`)
+  if (!res.ok) {
+    throw new Error(`El backend respondió ${res.status}`)
+  }
+  return res.json()
+}
+
 export { API_URL }
