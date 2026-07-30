@@ -4,3 +4,5 @@ soundfile
 numpy
 pyodbc
 python-dotenv
+fastapi
+uvicorn[standard]

@@ -52,6 +52,29 @@ Opciones de `build`:
 - `--peak 0.7` dónde cae el pico de energía (0..1)
 - `--energy-boost` habilita el salto +7 de Camelot (subir una quinta)
 - `--start <track_id>` fija el primer track
+- `--mode limpio|realista` limpio (default) = solo lossless de Maxi; realista = todo
+- `--quality lossless|compressed` y `--collection Maxi|Zoe` overrides que pisan el modo
+
+## Backend (Fase 2)
+
+API local con FastAPI que reutiliza el mismo motor de `src/` (solo lectura).
+
+```
+uvicorn app.main:app --reload
+```
+
+- Doc interactiva (probás los endpoints con un botón): http://127.0.0.1:8000/docs
+- Endpoints:
+  - `GET /health` → `{"status": "ok"}`
+  - `GET /tracks` → la biblioteca en JSON. Query params opcionales:
+    `quality` (`lossless`/`compressed`), `collection` (`Maxi`/`Zoe`),
+    `only_representatives` (true = un solo track por grupo de duplicados).
+
+Ejemplos:
+```
+http://127.0.0.1:8000/tracks
+http://127.0.0.1:8000/tracks?only_representatives=true&collection=Maxi
+```
 
 ## Estructura
 
@@ -61,8 +84,13 @@ src/
   camelot.py    mapeo key -> Camelot + reglas de compatibilidad
   ingest.py     lee la master.db de Rekordbox
   analyze.py    features de audio + energy_score
+  dedupe.py     de-duplicación (grupos + representante por calidad)
+  derive.py     campos derivados del file_path (quality, collection)
+  library.py    lectura de la biblioteca (la usa el backend)
   build_set.py  armador greedy sobre la curva de energía
   cli.py        entrypoint
+app/
+  main.py       backend FastAPI (GET /health, GET /tracks)
 sql/schema.sql  esquema de tablas
 ```
 
