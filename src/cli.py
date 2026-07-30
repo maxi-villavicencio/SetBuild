@@ -34,6 +34,8 @@ def main():
 
     p_dd = sub.add_parser("dedupe", help="Agrupa tracks que son el mismo tema (de-duplicacion)")
     p_dd.add_argument("--report", action="store_true", help="Imprime totales y ejemplos de grupos")
+    p_dd.add_argument("--reelect", action="store_true",
+                      help="No reagrupa: re-elige el representante por calidad sobre los grupos ya guardados")
 
     p_df = sub.add_parser("derive-fields", help="Rellena quality/collection desde el file_path")
     p_df.add_argument("--report", action="store_true", help="Cuenta tracks por quality y collection")
@@ -58,7 +60,10 @@ def main():
     elif args.cmd == "recompute-energy":
         analyze_mod.recompute_energy_scores()
     elif args.cmd == "dedupe":
-        dedupe_mod.dedupe(report=args.report)
+        if args.reelect:
+            dedupe_mod.reelect_representatives(report=args.report)
+        else:
+            dedupe_mod.dedupe(report=args.report)
     elif args.cmd == "derive-fields":
         derive_mod.backfill(report=args.report)
     elif args.cmd == "build":
