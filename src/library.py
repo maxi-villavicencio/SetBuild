@@ -6,6 +6,40 @@ Reusa la conexion de siempre (src.db.get_conn). Invariante: solo LEE (SELECT).
 from .db import get_conn
 
 
+_SELECT_COLS = """
+    t.track_id, t.title, t.artist, t.bpm, t.camelot, t.key_musical,
+    f.energy_score, t.quality, t.collection, t.is_representative
+"""
+
+
+def _row_to_track(r):
+    return dict(
+        track_id=r[0],
+        title=r[1],
+        artist=r[2],
+        bpm=(float(r[3]) if r[3] is not None else None),
+        camelot=r[4],
+        key_musical=r[5],
+        energy_score=(float(r[6]) if r[6] is not None else None),
+        quality=r[7],
+        collection=r[8],
+        is_representative=(bool(r[9]) if r[9] is not None else None),
+    )
+
+
+def get_track(track_id):
+    """Devuelve un track por id (sin filtros: es dato dado, no candidato) o None."""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT " + _SELECT_COLS +
+        " FROM dbo.tracks t LEFT JOIN dbo.track_features f ON f.track_id = t.track_id"
+        " WHERE t.track_id = ?", track_id)
+    row = cur.fetchone()
+    conn.close()
+    return _row_to_track(row) if row else None
+
+
 def get_tracks(quality=None, collection=None, only_representatives=False):
     """Devuelve la biblioteca como lista de dicts.
 
@@ -27,12 +61,8 @@ def get_tracks(quality=None, collection=None, only_representatives=False):
     if only_representatives:
         where.append("(t.is_representative = 1 OR t.is_representative IS NULL)")
 
-    sql = """
-        SELECT t.track_id, t.title, t.artist, t.bpm, t.camelot, t.key_musical,
-               f.energy_score, t.quality, t.collection, t.is_representative
-        FROM dbo.tracks t
-        LEFT JOIN dbo.track_features f ON f.track_id = t.track_id
-    """
+    sql = ("SELECT " + _SELECT_COLS +
+           " FROM dbo.tracks t LEFT JOIN dbo.track_features f ON f.track_id = t.track_id")
     if where:
         sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY t.artist, t.title"
@@ -40,19 +70,6 @@ def get_tracks(quality=None, collection=None, only_representatives=False):
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(sql, *params)
-    rows = []
-    for r in cur.fetchall():
-        rows.append(dict(
-            track_id=r[0],
-            title=r[1],
-            artist=r[2],
-            bpm=(float(r[3]) if r[3] is not None else None),
-            camelot=r[4],
-            key_musical=r[5],
-            energy_score=(float(r[6]) if r[6] is not None else None),
-            quality=r[7],
-            collection=r[8],
-            is_representative=(bool(r[9]) if r[9] is not None else None),
-        ))
+    rows = [_row_to_track(r) for r in cur.fetchall()]
     conn.close()
     return rows

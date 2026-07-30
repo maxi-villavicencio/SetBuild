@@ -44,6 +44,7 @@ python -m src.cli ingest             # Rekordbox -> tracks
 python -m src.cli analyze            # librosa -> features (paso lento, corre una vez)
 python -m src.cli recompute-energy   # features -> energy_score 1..10
 python -m src.cli build --length 15 --save "Warmup Sabado"
+python -m src.cli next --track 213         # sugiere candidatos para el siguiente track
 ```
 
 Opciones de `build`:
@@ -69,6 +70,10 @@ uvicorn app.main:app --reload
   - `GET /tracks` → la biblioteca en JSON. Query params opcionales:
     `quality` (`lossless`/`compressed`), `collection` (`Maxi`/`Zoe`),
     `only_representatives` (true = un solo track por grupo de duplicados).
+  - `GET /next-candidates` → dado un `track_id` actual, los mejores candidatos para el
+    siguiente track (Camelot + BPM + energía). Params: `limit`, `target_energy`
+    (subila/bajala para algo más movido/tranqui), `mode`, `quality`, `collection`,
+    `energy_boost`. Cada candidato trae `reasons` (ej. "misma key", "energía similar").
 
 Ejemplos:
 ```

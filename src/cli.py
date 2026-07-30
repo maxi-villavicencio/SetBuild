@@ -54,6 +54,16 @@ def main():
     p_b.add_argument("--collection", choices=["Maxi", "Zoe"], default=None,
                      help="Override de coleccion (pisa el modo)")
 
+    p_n = sub.add_parser("next", help="Sugiere los mejores candidatos para el siguiente track")
+    p_n.add_argument("--track", type=int, required=True, help="track_id actual")
+    p_n.add_argument("--limit", type=int, default=6)
+    p_n.add_argument("--target-energy", type=float, default=None,
+                     help="Energia objetivo (1..10); por defecto la del track actual")
+    p_n.add_argument("--mode", choices=["limpio", "realista"], default="realista")
+    p_n.add_argument("--quality", choices=["lossless", "compressed"], default=None)
+    p_n.add_argument("--collection", choices=["Maxi", "Zoe"], default=None)
+    p_n.add_argument("--energy-boost", action="store_true", help="Permite el salto +7 de Camelot")
+
     args = parser.parse_args()
 
     if args.cmd == "init-db":
@@ -80,6 +90,12 @@ def main():
         build_mod.print_set(order)
         if args.save and order:
             build_mod.save_set(order, args.save)
+    elif args.cmd == "next":
+        result = build_mod.suggest_next(
+            args.track, limit=args.limit, target_energy=args.target_energy,
+            mode=args.mode, quality=args.quality, collection=args.collection,
+            energy_boost=args.energy_boost)
+        build_mod.print_candidates(result)
 
 
 if __name__ == "__main__":
