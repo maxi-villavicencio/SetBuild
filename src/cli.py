@@ -14,6 +14,7 @@ from . import analyze as analyze_mod
 from . import build_set as build_mod
 from . import dedupe as dedupe_mod
 from . import derive as derive_mod
+from . import genres as genres_mod
 from . import ingest as ingest_mod
 from .db import run_sql_file
 
@@ -39,6 +40,10 @@ def main():
 
     p_df = sub.add_parser("derive-fields", help="Rellena quality/collection desde el file_path")
     p_df.add_argument("--report", action="store_true", help="Cuenta tracks por quality y collection")
+
+    p_g = sub.add_parser("assign-genre", help="Asigna genero canonico desde las playlists de Rekordbox")
+    p_g.add_argument("--report", action="store_true",
+                     help="Muestra playlist->genero, ignoradas, y tracks por genero")
 
     p_b = sub.add_parser("build", help="Arma un set")
     p_b.add_argument("--length", type=int, default=15)
@@ -82,6 +87,8 @@ def main():
             dedupe_mod.dedupe(report=args.report)
     elif args.cmd == "derive-fields":
         derive_mod.backfill(report=args.report)
+    elif args.cmd == "assign-genre":
+        genres_mod.assign_genres(report=args.report)
     elif args.cmd == "build":
         order = build_mod.build(length=args.length, bpm_tol=args.bpm_tol,
                                 peak_pos=args.peak, energy_boost=args.energy_boost,

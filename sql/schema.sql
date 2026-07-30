@@ -19,6 +19,7 @@ CREATE TABLE dbo.tracks (
     is_representative BIT,                            -- 1 si es el track elegido del grupo; NULL = sin deduplicar todavia
     quality        NVARCHAR(20),                     -- derivado de la extension: 'lossless' | 'compressed' | NULL (sin path)
     collection     NVARCHAR(50),                     -- derivado de la carpeta: 'Maxi' | 'Zoe' | NULL (indeterminada)
+    genre_canonical NVARCHAR(100),                    -- genero canonico desde las playlists de Rekordbox; NULL si no matchea
     updated_at     DATETIME2 DEFAULT SYSUTCDATETIME()
 );
 
@@ -62,3 +63,7 @@ IF COL_LENGTH('dbo.tracks', 'quality') IS NULL
     ALTER TABLE dbo.tracks ADD quality NVARCHAR(20) NULL;
 IF COL_LENGTH('dbo.tracks', 'collection') IS NULL
     ALTER TABLE dbo.tracks ADD collection NVARCHAR(50) NULL;
+
+-- Sprint 9 - genero canonico desde las playlists de Rekordbox.
+IF COL_LENGTH('dbo.tracks', 'genre_canonical') IS NULL
+    ALTER TABLE dbo.tracks ADD genre_canonical NVARCHAR(100) NULL;

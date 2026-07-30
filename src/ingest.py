@@ -64,6 +64,30 @@ def fetch_rekordbox_tracks():
     return rows
 
 
+def fetch_playlists(parent_folders=("maxi", "zoe")):
+    """Devuelve las playlists de genero (las que cuelgan de las carpetas madre maxi/zoe).
+
+    Cada item: {folder, name, content_ids}. Solo lectura sobre la master.db.
+    Correr con Rekordbox cerrado (pyrekordbox abre en modo lectura)."""
+    db = Rekordbox6Database()
+    nodes = list(db.get_playlist())
+    by_id = {p.ID: p for p in nodes}
+    wanted = {f.lower() for f in parent_folders}
+
+    out = []
+    for p in nodes:
+        if getattr(p, "Attribute", None) != 0:  # 0 = playlist, 1 = carpeta
+            continue
+        parent = by_id.get(getattr(p, "ParentID", None))
+        folder = _name_of(parent)
+        if not folder or folder.lower() not in wanted:
+            continue
+        content_ids = [str(s.ContentID) for s in (getattr(p, "Songs", None) or [])]
+        out.append({"folder": folder, "name": getattr(p, "Name", None),
+                    "content_ids": content_ids})
+    return out
+
+
 _UPSERT = """
 MERGE dbo.tracks AS t
 USING (SELECT ? AS rb_content_id) AS s
