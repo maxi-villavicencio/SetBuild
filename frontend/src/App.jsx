@@ -10,6 +10,13 @@ const TABS = [
 
 export default function App() {
   const [tab, setTab] = useState('biblioteca')
+  // Track semilla para arrancar un set desde la Biblioteca (se consume al montar SetBuilder).
+  const [seedTrack, setSeedTrack] = useState(null)
+
+  const startFromTrack = (track) => {
+    setSeedTrack(track)
+    setTab('armar')
+  }
 
   return (
     <div className="app">
@@ -28,7 +35,11 @@ export default function App() {
         </nav>
       </header>
 
-      {tab === 'biblioteca' ? <LibraryView /> : <SetBuilder />}
+      {tab === 'biblioteca' ? (
+        <LibraryView onStartFromTrack={startFromTrack} />
+      ) : (
+        <SetBuilder seedTrack={seedTrack} onSeedConsumed={() => setSeedTrack(null)} />
+      )}
     </div>
   )
 }

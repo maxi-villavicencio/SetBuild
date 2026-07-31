@@ -7,15 +7,21 @@ const LIMIT = 8
 const DELTA = 1.5 // cuánto sube/baja la energía objetivo al pedir "más movido/tranqui"
 const clamp = (v) => Math.max(1, Math.min(10, v))
 
-export default function SetBuilder() {
+export default function SetBuilder({ seedTrack = null, onSeedConsumed }) {
   // Biblioteca (representantes) para elegir el track de arranque.
   const [allTracks, setAllTracks] = useState([])
   const [libStatus, setLibStatus] = useState('loading')
   const [query, setQuery] = useState('')
 
-  // Set en construcción y candidatos.
-  const [set, setSet] = useState([])
+  // Set en construcción y candidatos. Si venimos desde la Biblioteca, arrancamos con la semilla.
+  const [set, setSet] = useState(() => (seedTrack ? [seedTrack] : []))
   const [energyDir, setEnergyDir] = useState('similar') // 'similar' | 'mas' | 'menos'
+
+  // Consumir la semilla al montar (para que una navegación manual posterior no la reuse).
+  useEffect(() => {
+    if (seedTrack) onSeedConsumed?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [mode, setMode] = useState('realista')
   const [candidates, setCandidates] = useState([])
   const [candStatus, setCandStatus] = useState('idle') // idle|loading|ok|error
@@ -91,6 +97,20 @@ export default function SetBuilder() {
     setSet([])
     setEnergyDir('similar')
   }
+  const moveUp = (i) =>
+    setSet((prev) => {
+      if (i <= 0) return prev
+      const next = [...prev]
+      ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+      return next
+    })
+  const moveDown = (i) =>
+    setSet((prev) => {
+      if (i >= prev.length - 1) return prev
+      const next = [...prev]
+      ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+      return next
+    })
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -143,6 +163,7 @@ export default function SetBuilder() {
                           {t.title || <span className="dim">—</span>}
                           <span className="dim"> — {t.artist || '—'}</span>
                         </span>
+                        <span className="chip genre">{t.genre_canonical || 'sin clasificar'}</span>
                       </button>
                     </li>
                   ))}
@@ -153,7 +174,7 @@ export default function SetBuilder() {
         </div>
       ) : (
         <div className="builder-grid">
-          <SetTimeline set={set} onUndo={undo} />
+          <SetTimeline set={set} onUndo={undo} onMoveUp={moveUp} onMoveDown={moveDown} />
 
           <section className="next-panel">
             <div className="next-head">

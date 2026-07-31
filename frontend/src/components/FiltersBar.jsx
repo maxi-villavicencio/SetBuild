@@ -1,5 +1,5 @@
-// Barra de filtros: mapea 1:1 con lo que soporta GET /tracks.
-export default function FiltersBar({ filters, onChange, count, total }) {
+// Barra de filtros: mapea 1:1 con lo que soporta GET /tracks. Incluye el toggle de vista.
+export default function FiltersBar({ filters, onChange, count, total, view, onViewChange }) {
   const set = (patch) => onChange({ ...filters, ...patch })
 
   return (
@@ -17,19 +17,6 @@ export default function FiltersBar({ filters, onChange, count, total }) {
         </select>
       </div>
 
-      <div className="field">
-        <label htmlFor="f-collection">Colección</label>
-        <select
-          id="f-collection"
-          value={filters.collection}
-          onChange={(e) => set({ collection: e.target.value })}
-        >
-          <option value="">Todas</option>
-          <option value="Maxi">Maxi</option>
-          <option value="Zoe">Zoe</option>
-        </select>
-      </div>
-
       <label className="toggle">
         <input
           type="checkbox"
@@ -40,6 +27,23 @@ export default function FiltersBar({ filters, onChange, count, total }) {
       </label>
 
       <div className="spacer" />
+
+      {onViewChange && (
+        <div className="segmented" role="group" aria-label="Vista">
+          <button
+            className={view === 'plana' ? 'on' : ''}
+            onClick={() => onViewChange('plana')}
+          >
+            Plana
+          </button>
+          <button
+            className={view === 'agrupada' ? 'on' : ''}
+            onClick={() => onViewChange('agrupada')}
+          >
+            Por género
+          </button>
+        </div>
+      )}
 
       <div className="counter">
         Viendo <strong>{count}</strong>

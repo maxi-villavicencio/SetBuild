@@ -173,10 +173,14 @@ def save_set(order, name):
 
 _ENERGY_SIMILAR = 0.75  # margen para considerar la energia "similar" al objetivo
 _BPM_HARD = 2.0         # filtro duro de BPM: +/-2 absoluto respecto del track actual
+_ENERGY_GRAIN = 0.5     # grano para agrupar la energia en niveles (desempate seguras vs +7)
+
+# Transiciones armonicas "seguras" (vs el energy boost +7, que es mas audaz).
+_SAFE_KEYS = {"misma key", "key adyacente (+1)", "key adyacente (-1)", "relativo mayor/menor"}
 
 # Campos del candidato que se devuelven (subconjunto de los del track).
 _CAND_FIELDS = ("track_id", "title", "artist", "bpm", "camelot",
-                "energy_score", "quality", "collection", "genre_canonical")
+                "energy_score", "quality", "collection", "genre_canonical", "duration_sec")
 
 
 def _bpm_check(cur_bpm, cand_bpm):
@@ -190,12 +194,12 @@ def _bpm_check(cur_bpm, cand_bpm):
     return "ok", dist, None
 
 
-def _key_check(cur_cam, cand_cam, energy_boost):
-    """Filtro duro de Camelot (reusa harmonic_relation). Devuelve (status, motivo).
-    status: 'ok' (motivo=relacion) | 'exclude' | 'gracia' (sin key: pasa despriorizado)."""
+def _key_check(cur_cam, cand_cam):
+    """Filtro duro de Camelot (reusa harmonic_relation con +7 SIEMPRE habilitado en el sugeridor).
+    Devuelve (status, motivo). status: 'ok' (motivo=relacion) | 'exclude' | 'gracia' (sin key)."""
     if not cur_cam or not cand_cam:
         return "gracia", "sin key"
-    rel = harmonic_relation(cur_cam, cand_cam, energy_boost)
+    rel = harmonic_relation(cur_cam, cand_cam, energy_boost=True)
     if rel is None:
         return "exclude", None
     return "ok", rel
@@ -225,13 +229,16 @@ def _energy_reason(cand_e, target):
     return abs(diff), ("mas movido" if diff > 0 else "mas tranqui")
 
 
-def next_candidates(current, pool, target_energy=None, energy_boost=False, limit=6):
+def next_candidates(current, pool, target_energy=None, limit=6):
     """Dado un track actual, devuelve los mejores candidatos del pool (dicts estilo library).
 
-    Filtros duros: BPM +/-2 y Camelot compatible (reusa camelot.py). Ranking: genero
-    (mismo -> compatible -> sin genero) -> cercania de energia -> cercania de BPM.
-    Degradacion con gracia (ver nota arriba): None de genero nunca excluye; sin camelot/BPM
-    pasa despriorizado; sin energia se hunde por distancia.
+    Filtros duros: BPM +/-2 y Camelot compatible (misma/+-1/relativo/+7, reusa camelot.py con
+    el energy boost SIEMPRE habilitado en el sugeridor). Ranking:
+      genero -> (datos completos) -> nivel de energia -> transicion segura antes que +7 ->
+      energia fina -> BPM.
+    El +7 (energy boost) suma opciones pero no se pone arriba de una mezcla segura de energia
+    equivalente. Degradacion con gracia: None de genero nunca excluye; sin camelot/BPM pasa
+    despriorizado; sin energia se hunde por distancia.
     """
     cur_cam = current.get("camelot")
     cur_bpm = current.get("bpm")
@@ -246,7 +253,7 @@ def next_candidates(current, pool, target_energy=None, energy_boost=False, limit
         bpm_status, bpm_dist, bpm_reason = _bpm_check(cur_bpm, t.get("bpm"))
         if bpm_status == "exclude":
             continue
-        key_status, key_reason = _key_check(cur_cam, t.get("camelot"), energy_boost)
+        key_status, key_reason = _key_check(cur_cam, t.get("camelot"))
         if key_status == "exclude":
             continue
         g_rank, g_reason = _genre_rank(cur_genre, t.get("genre_canonical"))
@@ -255,19 +262,21 @@ def next_candidates(current, pool, target_energy=None, energy_boost=False, limit
 
         e_dist, e_reason = _energy_reason(t.get("energy_score"), target)
         incompleto = 1 if (key_status == "gracia" or bpm_status == "gracia") else 0
+        e_level = round(e_dist / _ENERGY_GRAIN) * _ENERGY_GRAIN  # agrupa energia en niveles
+        boost_flag = 0 if key_reason in _SAFE_KEYS else 1        # seguras (0) antes que +7 (1)
 
         reasons = [r for r in (g_reason, key_reason, e_reason, bpm_reason) if r]
         cand = {k: t.get(k) for k in _CAND_FIELDS}
         cand["reasons"] = reasons
-        # orden: genero -> completo antes que incompleto -> energia -> BPM
-        scored.append(((g_rank, incompleto, e_dist, bpm_dist), cand))
+        # orden: genero -> completo -> nivel de energia -> segura antes que +7 -> energia fina -> BPM
+        scored.append(((g_rank, incompleto, e_level, boost_flag, e_dist, bpm_dist), cand))
 
     scored.sort(key=lambda x: x[0])
     return [cand for _, cand in scored[:limit]]
 
 
 def suggest_next(track_id, limit=6, target_energy=None, mode="realista",
-                 quality=None, collection=None, energy_boost=False):
+                 quality=None, collection=None):
     """Orquesta el sugeridor: trae el track actual y el pool (representantes, filtrado por modo)
     y devuelve {"current", "candidates"}. Devuelve None si el track_id no existe."""
     current = get_track(track_id)
@@ -275,8 +284,7 @@ def suggest_next(track_id, limit=6, target_energy=None, mode="realista",
         return None
     eff_q, eff_c = _resolve_filters(mode, quality, collection)
     pool = get_tracks(quality=eff_q, collection=eff_c, only_representatives=True)
-    cands = next_candidates(current, pool, target_energy=target_energy,
-                            energy_boost=energy_boost, limit=limit)
+    cands = next_candidates(current, pool, target_energy=target_energy, limit=limit)
     return {"current": current, "candidates": cands}
 
 
@@ -291,6 +299,10 @@ def print_candidates(result):
     print(f"\nActual: [{c['track_id']}] {c['title']} - {c['artist']}")
     print(f"        {bpm} BPM | {c.get('camelot') or '?'} | energia {e} "
           f"| genero {c.get('genre_canonical') or '-'}")
+    if not result["candidates"]:
+        print("\nSin candidatos compatibles - carga mas tracks de este genero "
+              "o cambia el track anterior.")
+        return
     print(f"\n{'BPM':>5}  {'KEY':>4}  {'E':>4}  MOTIVOS / TITULO - ARTISTA")
     print("-" * 78)
     for t in result["candidates"]:

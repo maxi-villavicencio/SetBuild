@@ -1,4 +1,13 @@
-// Muestra el set en construcción (orden, BPM/key/energía) + una curva de energía simple.
+// Muestra el set en construcción (orden, BPM/key/energía/género), su duración total,
+// una curva de energía, reorden por flechas y deshacer.
+
+function fmtDuration(sec) {
+  const s = Math.round(sec)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const ss = String(s % 60).padStart(2, '0')
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`
+}
 
 function EnergyCurve({ set }) {
   const W = 520
@@ -23,11 +32,16 @@ function EnergyCurve({ set }) {
   )
 }
 
-export default function SetTimeline({ set, onUndo }) {
+export default function SetTimeline({ set, onUndo, onMoveUp, onMoveDown }) {
+  const totalSec = set.reduce((acc, t) => acc + (t.duration_sec || 0), 0)
+
   return (
     <section className="timeline">
       <div className="timeline-head">
-        <h2>Set en construcción <span className="dim">({set.length})</span></h2>
+        <h2>
+          Set en construcción <span className="dim">({set.length})</span>
+          {totalSec > 0 && <span className="dim"> · {fmtDuration(totalSec)}</span>}
+        </h2>
         <button className="ghost-btn" onClick={onUndo} disabled={set.length === 0}>
           ↶ Deshacer último
         </button>
@@ -40,8 +54,10 @@ export default function SetTimeline({ set, onUndo }) {
           <li key={`${t.track_id}-${i}`}>
             <span className="pos mono">{i + 1}</span>
             <span className="set-title">
-              {t.title || <span className="dim">—</span>}
-              <span className="dim"> — {t.artist || '—'}</span>
+              <span className="set-track-title">{t.title || '—'}</span>
+              <span className="set-sub dim">
+                {t.artist || '—'} · {t.genre_canonical || 'sin clasificar'}
+              </span>
             </span>
             <span className="mono set-meta">{t.bpm != null ? t.bpm.toFixed(1) : '—'}</span>
             <span className="mono set-meta">{t.camelot || '—'}</span>
@@ -50,6 +66,19 @@ export default function SetTimeline({ set, onUndo }) {
                 <span style={{ width: `${((t.energy_score ?? 0) / 10) * 100}%` }} />
               </span>
               <span className="mono">{t.energy_score != null ? t.energy_score.toFixed(1) : '—'}</span>
+            </span>
+            <span className="reorder">
+              <button onClick={() => onMoveUp(i)} disabled={i === 0} title="Subir" aria-label="Subir">
+                ↑
+              </button>
+              <button
+                onClick={() => onMoveDown(i)}
+                disabled={i === set.length - 1}
+                title="Bajar"
+                aria-label="Bajar"
+              >
+                ↓
+              </button>
             </span>
           </li>
         ))}

@@ -195,13 +195,12 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 /* --- Builder layout --- */
+/* Apilado: SET arriba a lo ancho completo, CANDIDATOS abajo a lo ancho completo. */
 .builder-grid {
-  display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.1fr);
+  display: flex;
+  flex-direction: column;
   gap: 18px;
-  align-items: start;
 }
-@media (max-width: 900px) { .builder-grid { grid-template-columns: 1fr; } }
 
 .timeline, .next-panel {
   background: var(--panel);
@@ -242,7 +241,7 @@ tbody tr:last-child td { border-bottom: none; }
 .set-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .set-list li {
   display: grid;
-  grid-template-columns: 22px 1fr auto auto 92px;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto 84px auto;
   gap: 10px;
   align-items: center;
   padding: 7px 8px;
@@ -251,9 +250,28 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .set-list li:hover { background: var(--panel-2); }
 .set-list .pos { color: var(--text-dim); text-align: right; }
-.set-title, .cand-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cand-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-title { display: flex; flex-direction: column; min-width: 0; }
+.set-track-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-sub { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .set-meta { color: var(--text-dim); }
 .set-energy, .cand-energy { display: inline-flex; align-items: center; gap: 6px; }
+
+.reorder { display: inline-flex; flex-direction: column; gap: 2px; }
+.reorder button {
+  background: var(--panel-2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 22px;
+  height: 16px;
+  line-height: 1;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+}
+.reorder button:hover:not(:disabled) { color: var(--text); border-color: var(--accent-dim); }
+.reorder button:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* --- Controles --- */
 .controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -291,11 +309,11 @@ tbody tr:last-child td { border-bottom: none; }
   text-align: left;
   font-size: 13px;
 }
-.cand { grid-template-columns: 46px 34px auto 1fr auto auto; }
-.start-row { grid-template-columns: 46px 34px 34px 1fr; }
+.cand { grid-template-columns: 46px 34px auto minmax(0, 1fr) auto auto; }
+.start-row { grid-template-columns: 46px 34px 34px minmax(0, 1fr) auto; }
 .cand:hover, .start-row:hover { border-color: var(--accent); background: var(--panel); }
 .cand-meta { color: var(--text-dim); }
-.reasons { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.reasons { display: inline-flex; gap: 4px; flex-wrap: wrap; max-width: 260px; justify-content: flex-end; }
 .chip {
   font-size: 11px;
   padding: 2px 7px;
@@ -306,6 +324,14 @@ tbody tr:last-child td { border-bottom: none; }
   white-space: nowrap;
 }
 .chip.key { color: var(--accent); border-color: var(--accent-dim); }
+.chip.genre { color: var(--text); background: var(--panel-2); border-color: var(--accent-dim); font-weight: 500; }
+/* Energy boost (+7): acento cálido para que se lea distinto de las transiciones seguras. */
+.chip.boost {
+  color: var(--compressed);
+  border-color: color-mix(in srgb, var(--compressed) 55%, transparent);
+  background: color-mix(in srgb, var(--compressed) 12%, transparent);
+  font-weight: 600;
+}
 .add-hint { color: var(--accent); font-size: 12px; white-space: nowrap; opacity: 0; }
 .cand:hover .add-hint { opacity: 1; }
 
@@ -324,3 +350,48 @@ tbody tr:last-child td { border-bottom: none; }
 .search:focus { outline: none; border-color: var(--accent-dim); }
 .start-results { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-width: 680px; }
 .no-res { padding: 8px; }
+
+/* --- Acción "Armar set" por fila (Biblioteca) --- */
+.action-col { width: 1%; white-space: nowrap; text-align: right; cursor: default; }
+thead th.action-col { cursor: default; }
+.row-action {
+  background: var(--panel-2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.row-action:hover { color: var(--accent); border-color: var(--accent); }
+
+/* --- Vista agrupada por género (carpetas plegables) --- */
+.grouped { display: flex; flex-direction: column; gap: 8px; }
+.genre-folder { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.folder-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  color: var(--text);
+  border: none;
+  padding: 12px 16px;
+  font-size: 15px;
+  cursor: pointer;
+  text-align: left;
+}
+.folder-head:hover { background: var(--panel-2); }
+.folder-head .chevron { color: var(--text-dim); width: 14px; }
+.folder-name { font-weight: 600; flex: 1; }
+.folder-count {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-size: 13px;
+}
+.genre-folder .table-wrap { border: none; border-top: 1px solid var(--border); border-radius: 0; }

@@ -45,6 +45,7 @@ class Track(BaseModel):
     quality: Optional[str] = None
     collection: Optional[str] = None
     genre_canonical: Optional[str] = None
+    duration_sec: Optional[float] = None
     is_representative: Optional[bool] = None
 
 
@@ -81,6 +82,7 @@ class Candidate(BaseModel):
     quality: Optional[str] = None
     collection: Optional[str] = None
     genre_canonical: Optional[str] = None
+    duration_sec: Optional[float] = None
     reasons: List[str] = []
 
 
@@ -96,17 +98,16 @@ def next_candidates(
         "realista", description="limpio = lossless de Maxi; realista = todo"),
     quality: Optional[Literal["lossless", "compressed"]] = Query(None),
     collection: Optional[Literal["Maxi", "Zoe"]] = Query(None),
-    energy_boost: bool = Query(False, description="Permite el salto +7 de Camelot"),
 ):
     """Dado un track actual, devuelve los mejores candidatos para el siguiente track del set.
 
-    Ordenados por compatibilidad (Camelot -> BPM -> cercania de energia). Excluye el track
-    actual y usa solo representantes (sin duplicados). Un candidato sin key o sin energia
-    aparece pero despriorizado y marcado en `reasons`.
+    Filtros duros: BPM +/-2 y Camelot compatible (misma/+-1/relativo/+7 energy boost). Ranking:
+    genero -> energia -> transicion segura antes que +7 -> BPM. Excluye el track actual y usa
+    solo representantes. Un candidato sin key/energia aparece despriorizado y marcado en `reasons`.
     """
     result = suggest_next(
         track_id, limit=limit, target_energy=target_energy, mode=mode,
-        quality=quality, collection=collection, energy_boost=energy_boost)
+        quality=quality, collection=collection)
     if result is None:
         raise HTTPException(status_code=404, detail=f"No existe el track_id {track_id}")
     return result["candidates"]

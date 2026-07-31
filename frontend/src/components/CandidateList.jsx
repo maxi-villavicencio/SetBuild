@@ -1,10 +1,25 @@
 // Lista de candidatos para el siguiente track. Click en uno lo agrega al set.
 
-function ReasonChips({ reasons }) {
+// Transiciones armónicas "seguras" vs el energy boost (+7), que se resalta distinto.
+const SAFE_KEY_REASONS = new Set([
+  'misma key',
+  'key adyacente (+1)',
+  'key adyacente (-1)',
+  'relativo mayor/menor',
+])
+
+function chipClass(r) {
+  if (r === 'energy boost (+7)') return 'chip boost'
+  if (SAFE_KEY_REASONS.has(r)) return 'chip key'
+  return 'chip'
+}
+
+function ReasonChips({ genre, reasons }) {
   return (
     <span className="reasons">
+      <span className="chip genre">{genre || 'sin clasificar'}</span>
       {reasons.map((r) => (
-        <span key={r} className={`chip ${r === 'misma key' ? 'key' : ''}`}>{r}</span>
+        <span key={r} className={chipClass(r)}>{r}</span>
       ))}
     </span>
   )
@@ -23,7 +38,11 @@ export default function CandidateList({ status, error, candidates, onPick, onRet
   }
 
   if (status === 'ok' && candidates.length === 0) {
-    return <div className="state">No hay candidatos compatibles. Probá otro modo o energía.</div>
+    return (
+      <div className="state">
+        Sin candidatos compatibles — cargá más tracks de este género o cambiá el track anterior.
+      </div>
+    )
   }
 
   return (
@@ -43,7 +62,7 @@ export default function CandidateList({ status, error, candidates, onPick, onRet
               {c.title || <span className="dim">—</span>}
               <span className="dim"> — {c.artist || '—'}</span>
             </span>
-            <ReasonChips reasons={c.reasons || []} />
+            <ReasonChips genre={c.genre_canonical} reasons={c.reasons || []} />
             <span className="add-hint">+ agregar</span>
           </button>
         </li>

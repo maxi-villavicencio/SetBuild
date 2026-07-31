@@ -74,7 +74,6 @@ def main():
     p_n.add_argument("--mode", choices=["limpio", "realista"], default="realista")
     p_n.add_argument("--quality", choices=["lossless", "compressed"], default=None)
     p_n.add_argument("--collection", choices=["Maxi", "Zoe"], default=None)
-    p_n.add_argument("--energy-boost", action="store_true", help="Permite el salto +7 de Camelot")
 
     args = parser.parse_args()
 
@@ -121,8 +120,7 @@ def main():
     elif args.cmd == "next":
         result = build_mod.suggest_next(
             args.track, limit=args.limit, target_energy=args.target_energy,
-            mode=args.mode, quality=args.quality, collection=args.collection,
-            energy_boost=args.energy_boost)
+            mode=args.mode, quality=args.quality, collection=args.collection)
         build_mod.print_candidates(result)
 
 

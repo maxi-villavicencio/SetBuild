@@ -97,7 +97,7 @@ def harmonic_relation(a, b, energy_boost=False):
     """Clasifica la relacion armonica de `a` -> `b` en la rueda de Camelot.
 
     Devuelve una etiqueta ("misma key", "key adyacente (+1)", "key adyacente (-1)",
-    "relativo mayor/menor", "salto de energia (+7)") o None si no son compatibles
+    "relativo mayor/menor", "energy boost (+7)") o None si no son compatibles
     (o si alguna key no se pudo interpretar). Reusa la misma matematica de la rueda."""
     pa, pb = _parse(a or ""), _parse(b or "")
     if not pa or not pb:
@@ -114,5 +114,5 @@ def harmonic_relation(a, b, energy_boost=False):
     if bnum == num and bletter != letter:
         return "relativo mayor/menor"
     if energy_boost and bletter == letter and bnum == (num + 6) % 12 + 1:
-        return "salto de energia (+7)"
+        return "energy boost (+7)"
     return None

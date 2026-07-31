@@ -8,7 +8,7 @@ const COLUMNS = [
   { key: 'camelot', label: 'Camelot' },
   { key: 'energy_score', label: 'Energía', num: true },
   { key: 'quality', label: 'Calidad' },
-  { key: 'collection', label: 'Colección' },
+  { key: 'genre_canonical', label: 'Género' },
 ]
 
 // Comparador que manda los nulos al final en ambas direcciones.
@@ -24,7 +24,7 @@ function compare(a, b, key, num, dir) {
   return dir === 'asc' ? r : -r
 }
 
-export default function TracksTable({ tracks }) {
+export default function TracksTable({ tracks, onStartFromTrack }) {
   const [sort, setSort] = useState({ key: 'energy_score', dir: 'desc' })
 
   const sorted = useMemo(() => {
@@ -55,6 +55,7 @@ export default function TracksTable({ tracks }) {
                 )}
               </th>
             ))}
+            <th className="action-col" aria-label="Acción" />
           </tr>
         </thead>
         <tbody>
@@ -83,7 +84,16 @@ export default function TracksTable({ tracks }) {
                   <span className="dim">—</span>
                 )}
               </td>
-              <td>{t.collection || <span className="dim">—</span>}</td>
+              <td>{t.genre_canonical || <span className="dim">sin clasificar</span>}</td>
+              <td className="action-col">
+                <button
+                  className="row-action"
+                  onClick={() => onStartFromTrack?.(t)}
+                  title="Armar set desde acá"
+                >
+                  ▶ Armar set
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>

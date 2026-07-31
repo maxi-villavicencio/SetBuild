@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getTracks } from '../api'
 import FiltersBar from './FiltersBar'
+import GroupedView from './GroupedView'
 import TracksTable from './TracksTable'
 
-// Vista "Biblioteca": tabla de tracks con filtros (lo del Sprint 6, ahora como componente).
-export default function LibraryView() {
+// Vista "Biblioteca": tabla de tracks con filtros. Vista plana o agrupada por género.
+export default function LibraryView({ onStartFromTrack }) {
   const [filters, setFilters] = useState({
     quality: '',
-    collection: '',
     onlyRepresentatives: false,
   })
+  const [view, setView] = useState('plana') // 'plana' | 'agrupada'
   const [tracks, setTracks] = useState([])
   const [status, setStatus] = useState('loading') // 'loading' | 'ok' | 'error'
   const [error, setError] = useState(null)
@@ -33,7 +34,13 @@ export default function LibraryView() {
 
   return (
     <>
-      <FiltersBar filters={filters} onChange={setFilters} count={tracks.length} />
+      <FiltersBar
+        filters={filters}
+        onChange={setFilters}
+        count={tracks.length}
+        view={view}
+        onViewChange={setView}
+      />
 
       {status === 'loading' && <div className="state">Cargando biblioteca…</div>}
 
@@ -48,8 +55,10 @@ export default function LibraryView() {
       {status === 'ok' &&
         (tracks.length === 0 ? (
           <div className="state">No hay tracks para estos filtros.</div>
+        ) : view === 'plana' ? (
+          <TracksTable tracks={tracks} onStartFromTrack={onStartFromTrack} />
         ) : (
-          <TracksTable tracks={tracks} />
+          <GroupedView tracks={tracks} onStartFromTrack={onStartFromTrack} />
         ))}
     </>
   )
