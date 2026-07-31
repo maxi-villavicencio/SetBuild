@@ -44,6 +44,7 @@ class Track(BaseModel):
     energy_score: Optional[float] = None
     quality: Optional[str] = None
     collection: Optional[str] = None
+    genre_canonical: Optional[str] = None
     is_representative: Optional[bool] = None
 
 
@@ -79,6 +80,7 @@ class Candidate(BaseModel):
     energy_score: Optional[float] = None
     quality: Optional[str] = None
     collection: Optional[str] = None
+    genre_canonical: Optional[str] = None
     reasons: List[str] = []
 
 

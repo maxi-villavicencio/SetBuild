@@ -8,7 +8,7 @@ from .db import get_conn
 
 _SELECT_COLS = """
     t.track_id, t.title, t.artist, t.bpm, t.camelot, t.key_musical,
-    f.energy_score, t.quality, t.collection, t.is_representative
+    f.energy_score, t.quality, t.collection, t.is_representative, t.genre_canonical
 """
 
 
@@ -24,6 +24,7 @@ def _row_to_track(r):
         quality=r[7],
         collection=r[8],
         is_representative=(bool(r[9]) if r[9] is not None else None),
+        genre_canonical=r[10],
     )
 
 

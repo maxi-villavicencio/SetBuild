@@ -7,6 +7,7 @@ Despues se puede modelar como grafo + beam search para optimizar la curva comple
 """
 from .camelot import harmonic_relation, is_compatible
 from .db import get_conn
+from .genres import is_genre_compatible
 from .library import get_track, get_tracks
 
 
@@ -162,25 +163,54 @@ def save_set(order, name):
 
 
 # --- Sugeridor interactivo (Fase 3): dado un track actual, mejores candidatos ---
+#
+# Jerarquia (Sprint 11):
+#   Filtros DUROS (no cumplen -> no aparecen): BPM +/-2 absoluto; Camelot compatible
+#     (misma / +-1 / relativo, reusando camelot.py; +7 solo con energy_boost).
+#   Ranking: 1) genero (mismo -> compatible -> sin genero), 2) energia, 3) BPM.
+#   Degradacion con gracia: sin genero = compatible con todo; sin camelot/BPM pasa pero
+#     despriorizado; sin energia se hunde por distancia. Nada rompe.
 
 _ENERGY_SIMILAR = 0.75  # margen para considerar la energia "similar" al objetivo
+_BPM_HARD = 2.0         # filtro duro de BPM: +/-2 absoluto respecto del track actual
 
 # Campos del candidato que se devuelven (subconjunto de los del track).
 _CAND_FIELDS = ("track_id", "title", "artist", "bpm", "camelot",
-                "energy_score", "quality", "collection")
+                "energy_score", "quality", "collection", "genre_canonical")
 
 
-def _harmonic_rank(rel, cur_cam, cand_cam):
-    """(rank, motivo). Menor rank = mejor. Rank 4 (incompatible) se descarta afuera."""
-    if cur_cam is None or cand_cam is None:
-        return 3, "sin key"
-    if rel == "misma key":
-        return 0, rel
-    if rel in ("key adyacente (+1)", "key adyacente (-1)", "relativo mayor/menor"):
-        return 1, rel
-    if rel == "salto de energia (+7)":
-        return 2, rel
-    return 4, None  # ambas keys presentes pero no compatibles -> se excluye
+def _bpm_check(cur_bpm, cand_bpm):
+    """Filtro duro de BPM. Devuelve (status, distancia, motivo).
+    status: 'ok' | 'exclude' | 'gracia' (dato faltante: pasa pero despriorizado)."""
+    if cur_bpm is None or cand_bpm is None:
+        return "gracia", 99.0, "sin BPM"
+    dist = abs(cand_bpm - cur_bpm)
+    if dist > _BPM_HARD:
+        return "exclude", dist, None
+    return "ok", dist, None
+
+
+def _key_check(cur_cam, cand_cam, energy_boost):
+    """Filtro duro de Camelot (reusa harmonic_relation). Devuelve (status, motivo).
+    status: 'ok' (motivo=relacion) | 'exclude' | 'gracia' (sin key: pasa despriorizado)."""
+    if not cur_cam or not cand_cam:
+        return "gracia", "sin key"
+    rel = harmonic_relation(cur_cam, cand_cam, energy_boost)
+    if rel is None:
+        return "exclude", None
+    return "ok", rel
+
+
+def _genre_rank(cur_genre, cand_genre):
+    """Ranking de genero. Devuelve (rank, motivo) o (None, None) si es incompatible (excluir).
+    0 = mismo genero, 1 = genero compatible, 2 = sin genero (None, al final del bloque)."""
+    if cand_genre is None:
+        return 2, "sin genero"
+    if cur_genre is not None and cand_genre == cur_genre:
+        return 0, "mismo genero"
+    if is_genre_compatible(cur_genre, cand_genre):
+        return 1, "genero compatible"
+    return None, None  # genero no compatible -> excluir
 
 
 def _energy_reason(cand_e, target):
@@ -195,45 +225,42 @@ def _energy_reason(cand_e, target):
     return abs(diff), ("mas movido" if diff > 0 else "mas tranqui")
 
 
-def next_candidates(current, pool, target_energy=None, bpm_tol=0.06,
-                    energy_boost=False, limit=6):
+def next_candidates(current, pool, target_energy=None, energy_boost=False, limit=6):
     """Dado un track actual, devuelve los mejores candidatos del pool (dicts estilo library).
 
-    Reusa la compatibilidad Camelot (harmonic_relation), la tolerancia de BPM (_bpm_ok) y la
-    cercania de energia. Ordena por: relacion armonica -> dentro de tolerancia de BPM ->
-    cercania de energia -> cercania de BPM. Degradacion con gracia: sin energy_score o sin
-    camelot el candidato aparece pero despriorizado; los armonicamente incompatibles se excluyen.
+    Filtros duros: BPM +/-2 y Camelot compatible (reusa camelot.py). Ranking: genero
+    (mismo -> compatible -> sin genero) -> cercania de energia -> cercania de BPM.
+    Degradacion con gracia (ver nota arriba): None de genero nunca excluye; sin camelot/BPM
+    pasa despriorizado; sin energia se hunde por distancia.
     """
     cur_cam = current.get("camelot")
     cur_bpm = current.get("bpm")
+    cur_genre = current.get("genre_canonical")
     target = target_energy if target_energy is not None else current.get("energy_score")
 
     scored = []
     for t in pool:
         if t["track_id"] == current["track_id"]:
             continue
-        cand_cam = t.get("camelot")
-        rel = harmonic_relation(cur_cam, cand_cam, energy_boost) if (cur_cam and cand_cam) else None
-        h_rank, h_reason = _harmonic_rank(rel, cur_cam, cand_cam)
-        if h_rank == 4:
-            continue  # incompatible: no es candidato
+
+        bpm_status, bpm_dist, bpm_reason = _bpm_check(cur_bpm, t.get("bpm"))
+        if bpm_status == "exclude":
+            continue
+        key_status, key_reason = _key_check(cur_cam, t.get("camelot"), energy_boost)
+        if key_status == "exclude":
+            continue
+        g_rank, g_reason = _genre_rank(cur_genre, t.get("genre_canonical"))
+        if g_rank is None:
+            continue  # genero no compatible
 
         e_dist, e_reason = _energy_reason(t.get("energy_score"), target)
+        incompleto = 1 if (key_status == "gracia" or bpm_status == "gracia") else 0
 
-        within = _bpm_ok(cur_bpm, t.get("bpm"), bpm_tol)
-        both_bpm = cur_bpm is not None and t.get("bpm") is not None
-        bpm_dist = abs(t["bpm"] - cur_bpm) if both_bpm else 99.0
-        out_of_tol = 0 if within else 1
-
-        reasons = [r for r in (h_reason, e_reason) if r]
-        if both_bpm and not within:
-            reasons.append("BPM fuera de tolerancia")
-        elif not both_bpm:
-            reasons.append("sin BPM")
-
+        reasons = [r for r in (g_reason, key_reason, e_reason, bpm_reason) if r]
         cand = {k: t.get(k) for k in _CAND_FIELDS}
         cand["reasons"] = reasons
-        scored.append(((h_rank, out_of_tol, e_dist, bpm_dist), cand))
+        # orden: genero -> completo antes que incompleto -> energia -> BPM
+        scored.append(((g_rank, incompleto, e_dist, bpm_dist), cand))
 
     scored.sort(key=lambda x: x[0])
     return [cand for _, cand in scored[:limit]]
@@ -262,9 +289,10 @@ def print_candidates(result):
     e = f"{c['energy_score']:.1f}" if c.get("energy_score") is not None else "?"
     bpm = f"{c['bpm']:.1f}" if c.get("bpm") is not None else "?"
     print(f"\nActual: [{c['track_id']}] {c['title']} - {c['artist']}")
-    print(f"        {bpm} BPM | {c.get('camelot') or '?'} | energia {e}")
+    print(f"        {bpm} BPM | {c.get('camelot') or '?'} | energia {e} "
+          f"| genero {c.get('genre_canonical') or '-'}")
     print(f"\n{'BPM':>5}  {'KEY':>4}  {'E':>4}  MOTIVOS / TITULO - ARTISTA")
-    print("-" * 72)
+    print("-" * 78)
     for t in result["candidates"]:
         e = f"{t['energy_score']:.1f}" if t.get("energy_score") is not None else "  ?"
         bpm = f"{t['bpm']:.1f}" if t.get("bpm") is not None else "  ?"

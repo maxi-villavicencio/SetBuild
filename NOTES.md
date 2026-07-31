@@ -9,6 +9,15 @@ Herramienta para armar sets de DJ ordenados por una curva de energía, respetand
 mezcla armónica (Camelot), BPM, género y el momento del set. Arranca como **web app
 local-first para uso propio**, con la idea de, si funciona, llevarla al público más adelante.
 
+## Principios
+
+Principio: el filtro de compatibilidad (BPM ±2, género, Camelot) NO se ablanda para compensar
+géneros con pocos tracks. La cantidad de tracks por género refleja cómo toca el DJ; si falta
+material, la solución es cargar más tracks de ese género, no que el motor baje su estándar. Cuando
+no haya candidatos, la herramienta lo comunica con claridad ("sin candidatos compatibles — cargá
+más tracks de este género o cambiá el track anterior"), sin empujar a bajar el estándar (no sugerir
+"probá otro modo o energía"). La herramienta refleja tu forma de tocar, no la fuerza.
+
 ## Fuente de datos y regla de solo-lectura (INVARIANTE)
 
 - Los tracks se bajan de Soundeo → van a Descargas → el usuario los mueve a mano a una
