@@ -31,7 +31,7 @@ CANONICAL_GENRES = [
     "Organic House",
     "Indie Dance",
     "Psy-Trance",
-    "Minimal Techno",
+    "Minimal / Deep Tech",
     "Dance",
     "Trance",
     "Electronica",
@@ -55,7 +55,7 @@ PLAYLIST_GENRE_MAP = {
     "indie": "Indie Dance",
     "psy": "Psy-Trance",
     "dance": "Indie Dance",  # en este contexto "dance" = indie dance
-    "minimal": "Minimal Techno",
+    "minimal": "Minimal / Deep Tech",
 }
 
 # --- Especificidad para desempatar la moda (mayor = mas especifico). ---
@@ -63,9 +63,54 @@ PLAYLIST_GENRE_MAP = {
 GENRE_SPECIFICITY = {
     "Afro House": 2, "Tech House": 2, "Deep House": 2, "Progressive House": 2,
     "Organic House": 2, "Melodic House & Techno": 2, "Indie Dance": 2,
-    "Psy-Trance": 2, "Minimal Techno": 2,
+    "Psy-Trance": 2, "Minimal / Deep Tech": 2,
     "House": 1, "Techno": 1, "Dance": 1,
 }
+
+# --- Gradiente de progresion del set (de mas chill/progresivo a mas duro). ---
+# Cada sub-lista es un ESCALON; se encadenan generos del mismo escalon y de escalones
+# VECINOS (|i-j| <= 1). Los no-vecinos no se cruzan. EDITAME para cambiar familias/orden.
+GENRE_GRADIENT = [
+    ["Organic House", "Progressive House", "Deep House"],  # 1 chill / progresivo
+    ["Afro House"],                                         # 2 antecesor del House
+    ["House", "Tech House", "Indie Dance"],                # 3 house (Indie Dance = bisagra)
+    ["Melodic House & Techno"],                            # 4 melodic techno
+    ["Techno", "Minimal / Deep Tech"],                     # 5 techno
+    ["Psy-Trance"],                                         # 6 un paso mas alla del techno
+]
+
+# Indice de escalon por genero (se arma solo desde GENRE_GRADIENT).
+_STEP_OF = {g: i for i, step in enumerate(GENRE_GRADIENT) for g in step}
+
+
+def _step_of(genre):
+    """Indice de escalon del genero, o None si no esta en el gradiente (incluye None)."""
+    return _STEP_OF.get(genre)
+
+
+def is_genre_compatible(a, b):
+    """True si dos generos mezclan. None o genero fuera del gradiente = compatible con todo
+    (senal opcional: nunca esconde un track). Si no, mismo escalon o vecinos (|i-j| <= 1)."""
+    sa, sb = _step_of(a), _step_of(b)
+    if sa is None or sb is None:
+        return True
+    return abs(sa - sb) <= 1
+
+
+def compatible_genres(genre):
+    """Set de generos compatibles con `genre` (incluye el propio).
+
+    Para None o un genero fuera del gradiente -> todos los generos del gradiente
+    (compatible con todo)."""
+    all_genres = {g for step in GENRE_GRADIENT for g in step}
+    s = _step_of(genre)
+    if s is None:
+        return all_genres
+    out = set()
+    for i in (s - 1, s, s + 1):
+        if 0 <= i < len(GENRE_GRADIENT):
+            out.update(GENRE_GRADIENT[i])
+    return out
 
 
 def normalize(name):
@@ -136,3 +181,41 @@ def assign_genres(report=False):
             print(f"  {(g or '(sin genero)'):<26} {n:>4}")
 
     return resolved
+
+
+def set_genre(track_id, genre):
+    """Asigna manualmente genre_canonical a un track por id (o lo limpia si genre es None/'').
+
+    Valida contra CANONICAL_GENRES para evitar typos. Solo escribe en NUESTRA DB (no toca
+    Rekordbox). Devuelve (viejo, nuevo) o None si el track no existe. Lanza ValueError si el
+    genero no es valido."""
+    genre = genre or None
+    if genre is not None and genre not in CANONICAL_GENRES:
+        raise ValueError(
+            f"Genero desconocido: {genre!r}.\nValidos: {', '.join(CANONICAL_GENRES)}")
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT genre_canonical FROM dbo.tracks WHERE track_id = ?", track_id)
+    row = cur.fetchone()
+    if row is None:
+        conn.close()
+        return None
+    old = row[0]
+    cur.execute("UPDATE dbo.tracks SET genre_canonical = ? WHERE track_id = ?", genre, track_id)
+    conn.commit()
+    conn.close()
+    return (old, genre)
+
+
+def print_compatibility():
+    """Imprime el gradiente y, por cada genero, con cuales es compatible (para CLI)."""
+    print("Gradiente (escalon -> generos):")
+    for i, step in enumerate(GENRE_GRADIENT, 1):
+        print(f"  {i}. {', '.join(step)}")
+    print("\nCompatibilidad por genero (mismo escalon + vecinos):")
+    for step in GENRE_GRADIENT:
+        for g in step:
+            others = sorted(compatible_genres(g) - {g})
+            print(f"  {g:<24} -> {', '.join(others)}")
+    print("\n(Un track sin genero / None es compatible con TODO: nunca se esconde.)")

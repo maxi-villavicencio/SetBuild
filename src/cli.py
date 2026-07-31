@@ -45,6 +45,13 @@ def main():
     p_g.add_argument("--report", action="store_true",
                      help="Muestra playlist->genero, ignoradas, y tracks por genero")
 
+    sub.add_parser("genre-compat", help="Imprime el gradiente y la compatibilidad por genero")
+
+    p_sg = sub.add_parser("set-genre", help="Asigna genero canonico a mano a un track por id")
+    p_sg.add_argument("--track", type=int, required=True, help="track_id")
+    p_sg.add_argument("--genre", type=str, default=None, help="Genero canonico (ver genre-compat)")
+    p_sg.add_argument("--clear", action="store_true", help="Deja el genero en NULL")
+
     p_b = sub.add_parser("build", help="Arma un set")
     p_b.add_argument("--length", type=int, default=15)
     p_b.add_argument("--bpm-tol", type=float, default=0.06)
@@ -89,6 +96,20 @@ def main():
         derive_mod.backfill(report=args.report)
     elif args.cmd == "assign-genre":
         genres_mod.assign_genres(report=args.report)
+    elif args.cmd == "genre-compat":
+        genres_mod.print_compatibility()
+    elif args.cmd == "set-genre":
+        genre = None if args.clear else args.genre
+        try:
+            res = genres_mod.set_genre(args.track, genre)
+        except ValueError as e:
+            print(e)
+            return
+        if res is None:
+            print(f"No existe el track_id {args.track}.")
+        else:
+            old, new = res
+            print(f"track {args.track}: genre_canonical {old!r} -> {new!r}")
     elif args.cmd == "build":
         order = build_mod.build(length=args.length, bpm_tol=args.bpm_tol,
                                 peak_pos=args.peak, energy_boost=args.energy_boost,
