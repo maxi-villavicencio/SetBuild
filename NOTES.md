@@ -113,6 +113,49 @@ Para elegir el próximo track, en orden:
   une (exige duracion +/-3%), y con razon: son masters distintos. Unificar "todas las versiones
   de un titulo" es otra decision de producto (agrupar por titulo base), no resuelta todavia.
 
+## Reproducción de audio (escuchar tracks en la app)
+
+Necesidad (pedida por un DJ real): poder escuchar los tracks o un
+fragmento dentro de la app, para identificarlos y ordenarlos mientras se
+arma el set.
+
+Decisión: el audio NO viene de APIs externas.
+- No hay API gratis/abierta confiable para previews (Spotify desmanteló
+  previews + audio-features; Beatport/SoundCloud son partner-only).
+- Soundeo / Muzbase / Traxload no tienen API pública, y scrapearlos es
+  legalmente riesgoso. Descartado.
+- Además, muchos tracks son releases nuevos que no estarían en ningún
+  servicio externo.
+
+La fuente correcta es el ARCHIVO LOCAL del usuario, que ya está en su
+disco (carpeta de tracks) y cuya ruta ya tenemos guardada (file_path).
+
+- Versión personal (corre en la máquina del usuario): el backend tiene
+  acceso a la carpeta local, así que puede servir el audio al navegador
+  para reproducirlo. Factible y gratis ahora.
+- Versión pública (servicio web): reaparece EL NUDO DEL AUDIO — el
+  archivo está en la máquina del usuario, no en el servidor, y una web
+  normal no puede leer el disco del visitante. Vías posibles: app corriendo
+  localmente / versión de escritorio / File System Access API del navegador
+  (con permiso del usuario, con limitaciones). Es la misma decisión de
+  arquitectura de fondo del producto público (dónde vive y se procesa el
+  audio), ya anotada.
+
+**Límite del navegador (Sprint 18) y Sprint 19 = transcodificación de AIFF (NO opcional).**
+Los navegadores Chromium (Chrome + el browser de la app) NO reproducen `.aiff` nativamente en
+`<audio>`. El Sprint 18 sirve el archivo local con streaming + seek y reproduce mp3/wav/flac/m4a
+(Zoe suena); para AIFF muestra "formato no soportado en el navegador" sin romper. **El Sprint 19
+es transcodificar AIFF (con ffmpeg) para poder reproducir la colección Maxi, que es la principal**
+— es el siguiente sprint sí o sí, porque sin eso la reproducción no cubre el material principal.
+
+## Escalabilidad de la biblioteca (pendiente para el público)
+
+Hoy la Biblioteca trae TODOS los tracks de una. Con ~1000 anda bien;
+con 20k-50k (DJ real) el navegador se pondría lento. Solución conocida
+para la versión pública: paginación (cargar de a N con scroll) o
+virtualización (renderizar solo filas visibles). No urgente para uso
+personal.
+
 ## Roadmap por fases
 
 - **Fase 0 — Repo y setup**: GitHub, `.gitignore`, estructura, Claude Code enlazado, `CLAUDE.md`.

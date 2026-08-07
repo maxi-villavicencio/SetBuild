@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getNextCandidates, getTracks } from '../api'
+import { createSet, getNextCandidates, getTracks } from '../api'
 import CandidateList from './CandidateList'
 import SetTimeline from './SetTimeline'
 
@@ -7,19 +7,25 @@ const LIMIT = 8
 const DELTA = 1.5 // cuánto sube/baja la energía objetivo al pedir "más movido/tranqui"
 const clamp = (v) => Math.max(1, Math.min(10, v))
 
-export default function SetBuilder({ seedTrack = null, onSeedConsumed }) {
+export default function SetBuilder({ seedTracks = null, onSeedConsumed }) {
   // Biblioteca (representantes) para elegir el track de arranque.
   const [allTracks, setAllTracks] = useState([])
   const [libStatus, setLibStatus] = useState('loading')
   const [query, setQuery] = useState('')
 
-  // Set en construcción y candidatos. Si venimos desde la Biblioteca, arrancamos con la semilla.
-  const [set, setSet] = useState(() => (seedTrack ? [seedTrack] : []))
+  // Set en construcción y candidatos. Si venimos con semilla (Biblioteca o set guardado), arrancamos con esos tracks.
+  const [set, setSet] = useState(() => (seedTracks && seedTracks.length ? [...seedTracks] : []))
   const [energyDir, setEnergyDir] = useState('similar') // 'similar' | 'mas' | 'menos'
+
+  // Guardado del set.
+  const [saveOpen, setSaveOpen] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const [saveStatus, setSaveStatus] = useState('idle') // idle|saving|ok|error
+  const [saveError, setSaveError] = useState(null)
 
   // Consumir la semilla al montar (para que una navegación manual posterior no la reuse).
   useEffect(() => {
-    if (seedTrack) onSeedConsumed?.()
+    if (seedTracks && seedTracks.length) onSeedConsumed?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const [mode, setMode] = useState('realista')
@@ -112,6 +118,22 @@ export default function SetBuilder({ seedTrack = null, onSeedConsumed }) {
       return next
     })
 
+  const saveSet = async () => {
+    const name = saveName.trim()
+    if (!name) return
+    setSaveStatus('saving')
+    setSaveError(null)
+    try {
+      await createSet({ name, trackIds: set.map((t) => t.track_id) })
+      setSaveStatus('ok')
+      setSaveOpen(false)
+      setSaveName('')
+    } catch (e) {
+      setSaveError(e.message || 'No se pudo guardar')
+      setSaveStatus('error')
+    }
+  }
+
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return []
@@ -173,8 +195,61 @@ export default function SetBuilder({ seedTrack = null, onSeedConsumed }) {
           )}
         </div>
       ) : (
-        <div className="builder-grid">
-          <SetTimeline set={set} onUndo={undo} onMoveUp={moveUp} onMoveDown={moveDown} />
+        <>
+          <div className="builder-toolbar">
+            {!saveOpen ? (
+              <button
+                className="ghost-btn"
+                onClick={() => {
+                  setSaveOpen(true)
+                  setSaveStatus('idle')
+                }}
+              >
+                💾 Guardar set
+              </button>
+            ) : (
+              <form
+                className="save-form"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  saveSet()
+                }}
+              >
+                <input
+                  className="search"
+                  type="text"
+                  placeholder="Nombre del set…"
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="ghost-btn"
+                  disabled={saveStatus === 'saving' || !saveName.trim()}
+                >
+                  {saveStatus === 'saving' ? 'Guardando…' : 'Guardar'}
+                </button>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={() => {
+                    setSaveOpen(false)
+                    setSaveName('')
+                  }}
+                >
+                  Cancelar
+                </button>
+              </form>
+            )}
+            {saveStatus === 'ok' && <span className="save-ok">Guardado ✓</span>}
+            {saveStatus === 'error' && (
+              <span className="save-err">No se pudo guardar: {saveError}</span>
+            )}
+          </div>
+
+          <div className="builder-grid">
+            <SetTimeline set={set} onUndo={undo} onMoveUp={moveUp} onMoveDown={moveDown} />
 
           <section className="next-panel">
             <div className="next-head">
@@ -225,7 +300,8 @@ export default function SetBuilder({ seedTrack = null, onSeedConsumed }) {
               onRetry={loadCandidates}
             />
           </section>
-        </div>
+          </div>
+        </>
       )}
     </div>
   )

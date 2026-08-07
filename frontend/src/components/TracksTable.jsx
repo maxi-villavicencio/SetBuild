@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { PlayButton } from '../lib/audioPlayer'
+import { sortTracks, useTableSort } from '../lib/tableSort'
 
 // Columnas de la tabla. `num` marca las numéricas (orden numérico + alineadas a la derecha).
 const COLUMNS = [
@@ -11,37 +13,16 @@ const COLUMNS = [
   { key: 'genre_canonical', label: 'Género' },
 ]
 
-// Comparador que manda los nulos al final en ambas direcciones.
-function compare(a, b, key, num, dir) {
-  const va = a[key]
-  const vb = b[key]
-  if (va == null && vb == null) return 0
-  if (va == null) return 1
-  if (vb == null) return -1
-  let r
-  if (num) r = va - vb
-  else r = String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' })
-  return dir === 'asc' ? r : -r
-}
-
 export default function TracksTable({ tracks, onStartFromTrack }) {
-  const [sort, setSort] = useState({ key: 'energy_score', dir: 'desc' })
-
-  const sorted = useMemo(() => {
-    const col = COLUMNS.find((c) => c.key === sort.key)
-    return [...tracks].sort((a, b) => compare(a, b, sort.key, col?.num, sort.dir))
-  }, [tracks, sort])
-
-  const onSort = (key) =>
-    setSort((s) =>
-      s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-    )
+  const { sort, onSort } = useTableSort({ key: 'energy_score', dir: 'desc' })
+  const sorted = useMemo(() => sortTracks(tracks, sort, COLUMNS), [tracks, sort])
 
   return (
     <div className="table-wrap">
       <table>
         <thead>
           <tr>
+            <th className="play-col" aria-label="Reproducir" />
             {COLUMNS.map((c) => (
               <th
                 key={c.key}
@@ -61,6 +42,7 @@ export default function TracksTable({ tracks, onStartFromTrack }) {
         <tbody>
           {sorted.map((t) => (
             <tr key={t.track_id}>
+              <td className="play-col"><PlayButton trackId={t.track_id} /></td>
               <td title={t.title || ''}>{t.title || <span className="dim">—</span>}</td>
               <td title={t.artist || ''}>{t.artist || <span className="dim">—</span>}</td>
               <td className="num mono">{t.bpm != null ? t.bpm.toFixed(1) : '—'}</td>

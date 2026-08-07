@@ -98,6 +98,24 @@ npm run dev
 Abre en http://localhost:5173. Si tu backend no está en `http://127.0.0.1:8000`, seteá
 `VITE_API_URL` (ej. en `frontend/.env`: `VITE_API_URL=http://127.0.0.1:8001`).
 
+## Reproducción de audio (ffmpeg)
+
+El botón ▶ de cada track reproduce el archivo local. Los formatos que el navegador soporta
+(mp3, wav, flac, m4a) suenan directo. Los **AIFF** (colección Maxi) no los reproduce Chrome:
+se **transcodifican a mp3 con ffmpeg** y se cachean en `.audio_cache/` (la primera vez tarda
+un poco; después es instantáneo). El archivo original nunca se modifica.
+
+Para que los AIFF suenen hay que **instalar ffmpeg** y que esté en el PATH:
+
+```
+winget install ffmpeg
+```
+
+(o con [Chocolatey](https://chocolatey.org/): `choco install ffmpeg`, o descargándolo de
+https://www.gyan.dev/ffmpeg/builds/ y agregando su carpeta `bin` al PATH). Cerrá y reabrí la
+terminal, verificá con `ffmpeg -version`, y reiniciá el backend. Sin ffmpeg, los AIFF devuelven
+un error claro (503) pero el resto de los formatos sigue sonando.
+
 ## Estructura
 
 ```

@@ -1,13 +1,7 @@
 // Muestra el set en construcción (orden, BPM/key/energía/género), su duración total,
 // una curva de energía, reorden por flechas y deshacer.
-
-function fmtDuration(sec) {
-  const s = Math.round(sec)
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const ss = String(s % 60).padStart(2, '0')
-  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`
-}
+import { PlayButton } from '../lib/audioPlayer'
+import { fmtDuration } from '../lib/format'
 
 function EnergyCurve({ set }) {
   const W = 520
@@ -53,6 +47,7 @@ export default function SetTimeline({ set, onUndo, onMoveUp, onMoveDown }) {
         {set.map((t, i) => (
           <li key={`${t.track_id}-${i}`}>
             <span className="pos mono">{i + 1}</span>
+            <PlayButton trackId={t.track_id} />
             <span className="set-title">
               <span className="set-track-title">{t.title || '—'}</span>
               <span className="set-sub dim">

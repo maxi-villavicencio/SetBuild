@@ -26,7 +26,9 @@ def main():
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("init-db", help="Crea las tablas en SQL Server")
-    sub.add_parser("ingest", help="Lee la master.db de Rekordbox -> tabla tracks")
+    p_ing = sub.add_parser("ingest", help="Lee la master.db de Rekordbox -> tabla tracks")
+    p_ing.add_argument("--no-pretranscode", action="store_true",
+                       help="No pre-transcodificar los AIFF a mp3 al terminar")
 
     p_an = sub.add_parser("analyze", help="Extrae features de audio con librosa")
     p_an.add_argument("--all", action="store_true", help="Reanaliza todos, no solo los faltantes")
@@ -82,6 +84,9 @@ def main():
         print("Esquema creado.")
     elif args.cmd == "ingest":
         ingest_mod.ingest()
+        if not args.no_pretranscode:
+            from . import pretranscode
+            pretranscode.pretranscode_all()
     elif args.cmd == "analyze":
         analyze_mod.analyze(only_missing=not args.all)
     elif args.cmd == "recompute-energy":

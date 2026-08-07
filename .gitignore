@@ -29,6 +29,8 @@ build/
 *.db
 *.sqlite
 *.sqlite3
+.audio_cache/
+.audio_cache/
 
 # Rekordbox (por las dudas, no versionar nada exportado)
 *.xml

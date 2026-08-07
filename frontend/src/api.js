@@ -35,4 +35,42 @@ export async function getNextCandidates({ trackId, limit, targetEnergy, mode } =
   return res.json()
 }
 
+// --- Sets guardados ---
+
+export async function createSet({ name, trackIds }) {
+  const res = await fetch(`${API_URL}/sets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, track_ids: trackIds }),
+  })
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null)
+    throw new Error(detail?.detail || `El backend respondió ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function listSets() {
+  const res = await fetch(`${API_URL}/sets`)
+  if (!res.ok) throw new Error(`El backend respondió ${res.status}`)
+  return res.json()
+}
+
+export async function getSet(setId) {
+  const res = await fetch(`${API_URL}/sets/${setId}`)
+  if (!res.ok) throw new Error(`El backend respondió ${res.status}`)
+  return res.json()
+}
+
+export async function deleteSet(setId) {
+  const res = await fetch(`${API_URL}/sets/${setId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`El backend respondió ${res.status}`)
+  return res.json()
+}
+
+// URL del audio local de un track (para el elemento <audio>).
+export function audioUrl(trackId) {
+  return `${API_URL}/tracks/${trackId}/audio`
+}
+
 export { API_URL }

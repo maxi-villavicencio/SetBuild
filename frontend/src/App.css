@@ -225,6 +225,9 @@ tbody tr:last-child td { border-bottom: none; }
   padding: 5px 10px;
   font-size: 13px;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 .ghost-btn:hover:not(:disabled) { color: var(--text); border-color: var(--accent-dim); }
 .ghost-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -241,7 +244,7 @@ tbody tr:last-child td { border-bottom: none; }
 .set-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .set-list li {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto auto 84px auto;
+  grid-template-columns: 20px 26px minmax(0, 1fr) auto auto 84px auto;
   gap: 10px;
   align-items: center;
   padding: 7px 8px;
@@ -395,3 +398,75 @@ thead th.action-col { cursor: default; }
   font-size: 13px;
 }
 .genre-folder .table-wrap { border: none; border-top: 1px solid var(--border); border-radius: 0; }
+
+/* --- Guardar set (toolbar en "Armar set") --- */
+.builder-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.save-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.save-form .search { width: 260px; padding: 7px 12px; font-size: 14px; }
+.save-ok { color: var(--lossless); font-size: 14px; }
+.save-err { color: #f0a3a3; font-size: 14px; }
+.ghost-btn.danger { color: #f0a3a3; }
+.ghost-btn.danger:hover:not(:disabled) { color: #ff7b7b; border-color: #ff7b7b; }
+
+/* --- Mis sets --- */
+.my-sets { display: flex; flex-direction: column; gap: 10px; }
+.set-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.set-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.set-card-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.set-card-name { font-weight: 600; font-size: 15px; }
+.set-card-meta { font-size: 13px; }
+.set-card-actions { display: flex; align-items: center; gap: 8px; }
+
+/* --- Reproductor: botón play por track --- */
+.play-btn {
+  background: var(--panel-2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex: none;
+}
+.play-btn:hover { color: var(--text); border-color: var(--accent-dim); }
+.play-btn.playing { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.play-btn.loading { border-color: var(--accent-dim); }
+.play-btn.err { color: var(--compressed); border-color: color-mix(in srgb, var(--compressed) 50%, transparent); }
+.play-btn .spinner {
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.play-col { width: 1%; text-align: center; padding-left: 10px; padding-right: 4px; cursor: default; }
+thead th.play-col { cursor: default; }
+
+/* candidato: play (izq) + fila clickeable (der) */
+.cand-row { display: flex; align-items: center; gap: 8px; }
+.cand-row .cand { flex: 1; min-width: 0; }

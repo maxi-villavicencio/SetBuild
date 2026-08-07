@@ -6,15 +6,24 @@ Levantar:
     uvicorn app.main:app --reload
 Doc interactiva: http://127.0.0.1:8000/docs
 """
+import os
+from datetime import datetime
 from typing import List, Optional
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from src.audio_cache import FfmpegNotAvailable, TranscodeError, is_audio, prepare_playable
 from src.build_set import suggest_next
-from src.library import get_tracks
+from src.pretranscode import warm_bg
+from src.export_xml import build_set_xml, safe_filename
+from src.library import (
+    delete_set, get_set, get_set_for_export, get_track_file_path, get_tracks,
+    list_sets, save_set,
+)
 
 app = FastAPI(
     title="DJ Set Builder API",
@@ -29,7 +38,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -110,4 +119,106 @@ def next_candidates(
         quality=quality, collection=collection)
     if result is None:
         raise HTTPException(status_code=404, detail=f"No existe el track_id {track_id}")
+    # Adelanta en segundo plano la conversion de los candidatos AIFF (no bloquea la respuesta).
+    warm_bg([c["track_id"] for c in result["candidates"]])
     return result["candidates"]
+
+
+@app.get("/tracks/{track_id}/audio")
+def track_audio(track_id: int):
+    """Sirve el audio LOCAL del track (streaming con Range/seek). Los formatos nativos van directo;
+    los que el navegador no soporta (ej. AIFF) se transcodifican a mp3 cacheado (ver audio_cache).
+
+    Seguridad: nunca recibe una ruta; busca el file_path del track en la DB y sirve SOLO ese
+    archivo (sin path traversal). El original solo se lee, nunca se modifica."""
+    exists, path = get_track_file_path(track_id)
+    if not exists:
+        raise HTTPException(status_code=404, detail=f"No existe el track_id {track_id}")
+    if not path or not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado en disco.")
+    if not is_audio(os.path.splitext(path)[1]):  # solo servimos audio
+        raise HTTPException(status_code=404, detail="El archivo no es de audio soportado.")
+    try:
+        serve_path, media_type = prepare_playable(track_id, path)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except FfmpegNotAvailable:
+        raise HTTPException(
+            status_code=503,
+            detail="ffmpeg no esta instalado; es necesario para reproducir AIFF. Ver README.")
+    except TranscodeError as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo preparar el audio: {e}")
+    # FileResponse maneja los Range requests (206) para que el <audio> pueda hacer seek.
+    return FileResponse(serve_path, media_type=media_type)
+
+
+# --- Sets guardados ---
+
+class SetCreate(BaseModel):
+    name: str
+    track_ids: List[int]
+
+
+class SetSummary(BaseModel):
+    set_id: int
+    name: Optional[str] = None
+    created_at: Optional[datetime] = None
+    track_count: int = 0
+    duration_sec: Optional[float] = None
+
+
+class SetDetail(BaseModel):
+    set_id: int
+    name: Optional[str] = None
+    created_at: Optional[datetime] = None
+    tracks: List[Track] = []
+
+
+@app.post("/sets", response_model=SetDetail)
+def create_set(body: SetCreate):
+    """Guarda un set con su nombre y la lista ordenada de track_ids."""
+    if not body.name.strip():
+        raise HTTPException(status_code=400, detail="El nombre no puede estar vacio.")
+    if not body.track_ids:
+        raise HTTPException(status_code=400, detail="El set no tiene tracks.")
+    return save_set(body.name.strip(), body.track_ids)
+
+
+@app.get("/sets", response_model=List[SetSummary])
+def get_sets():
+    """Lista los sets guardados."""
+    return list_sets()
+
+
+@app.get("/sets/{set_id}", response_model=SetDetail)
+def get_one_set(set_id: int):
+    """Devuelve un set guardado con sus tracks en orden."""
+    result = get_set(set_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"No existe el set {set_id}")
+    # Adelanta en segundo plano la conversion de los tracks AIFF del set (no bloquea la respuesta).
+    warm_bg([t["track_id"] for t in result["tracks"]])
+    return result
+
+
+@app.delete("/sets/{set_id}")
+def remove_set(set_id: int):
+    """Borra un set guardado (la cascada limpia set_tracks)."""
+    if not delete_set(set_id):
+        raise HTTPException(status_code=404, detail=f"No existe el set {set_id}")
+    return {"deleted": set_id}
+
+
+@app.get("/sets/{set_id}/export.xml")
+def export_set(set_id: int):
+    """Genera el XML de coleccion de Rekordbox del set (para importar a mano). Solo lectura."""
+    data = get_set_for_export(set_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"No existe el set {set_id}")
+    xml_str = build_set_xml(data["name"], data["tracks"])
+    filename = safe_filename(data["name"], fallback=f"set_{set_id}")
+    return Response(
+        content=xml_str,
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
