@@ -8,7 +8,7 @@ Despues se puede modelar como grafo + beam search para optimizar la curva comple
 from .camelot import harmonic_relation, is_compatible
 from .db import get_conn
 from .genres import is_genre_compatible
-from .library import get_track, get_tracks
+from .library import get_track, get_tracks, resolve_playlist_ids
 
 
 def _bpm_ok(bpm_a, bpm_b, tol):
@@ -36,13 +36,14 @@ def _resolve_filters(mode, quality, collection):
     return eff_q, eff_c
 
 
-def load_pool(quality=None, collection=None):
+def load_pool(quality=None, collection=None, playlist_ids=None):
     """Trae los tracks que tienen camelot, bpm y energy_score cargados.
 
     Usa un solo representante por grupo de duplicados (is_representative). Si todavia
     no se corrio 'dedupe' (is_representative NULL), no filtra nada: se comporta como antes.
     Los filtros quality/collection son opcionales; si son None no filtran esa dimension
     (asi los tracks con quality/collection nulos entran igual: degradacion con gracia).
+    playlist_ids (opcional): acota el pool a los tracks de esas playlists/carpetas (union).
     """
     where = ["t.camelot IS NOT NULL", "t.bpm IS NOT NULL", "f.energy_score IS NOT NULL",
              "(t.is_representative = 1 OR t.is_representative IS NULL)"]
@@ -53,6 +54,15 @@ def load_pool(quality=None, collection=None):
     if collection is not None:
         where.append("t.collection = ?")
         params.append(collection)
+    if playlist_ids:
+        resolved = resolve_playlist_ids(playlist_ids)
+        if resolved:
+            ph = ",".join("?" * len(resolved))
+            where.append(f"t.rb_content_id IN (SELECT rb_content_id FROM dbo.rb_playlist_tracks"
+                         f" WHERE rb_playlist_id IN ({ph}))")
+            params.extend(resolved)
+        else:
+            where.append("1 = 0")  # seleccion sin playlists validas -> pool vacio
 
     conn = get_conn()
     cur = conn.cursor()
@@ -80,14 +90,14 @@ def target_curve(n, peak_pos=0.7, start=2.0, peak=9.0, end=4.0):
 
 
 def build(length=15, bpm_tol=0.06, peak_pos=0.7, energy_boost=False, start_track_id=None,
-          mode="limpio", quality=None, collection=None):
+          mode="limpio", quality=None, collection=None, playlist_ids=None):
     """Construye un set de `length` tracks. bpm_tol es la tolerancia relativa de BPM (0.06 = 6%).
 
     mode: "limpio" (solo lossless de Maxi) o "realista" (todo). quality/collection son
-    overrides opcionales que pisan el modo por dimension.
+    overrides opcionales que pisan el modo por dimension. playlist_ids acota el pool.
     """
     eff_q, eff_c = _resolve_filters(mode, quality, collection)
-    pool = load_pool(quality=eff_q, collection=eff_c)
+    pool = load_pool(quality=eff_q, collection=eff_c, playlist_ids=playlist_ids)
     print(f"Modo: {mode} (quality={eff_q or 'cualquiera'}, collection={eff_c or 'cualquiera'}) "
           f"— pool: {len(pool)} tracks")
     if len(pool) < length:
@@ -276,14 +286,15 @@ def next_candidates(current, pool, target_energy=None, limit=6):
 
 
 def suggest_next(track_id, limit=6, target_energy=None, mode="realista",
-                 quality=None, collection=None):
-    """Orquesta el sugeridor: trae el track actual y el pool (representantes, filtrado por modo)
-    y devuelve {"current", "candidates"}. Devuelve None si el track_id no existe."""
+                 quality=None, collection=None, playlist_ids=None):
+    """Orquesta el sugeridor: trae el track actual y el pool (representantes, filtrado por modo y,
+    si se pasa, por playlists) y devuelve {"current", "candidates"}. None si el track_id no existe."""
     current = get_track(track_id)
     if current is None:
         return None
     eff_q, eff_c = _resolve_filters(mode, quality, collection)
-    pool = get_tracks(quality=eff_q, collection=eff_c, only_representatives=True)
+    pool = get_tracks(quality=eff_q, collection=eff_c, only_representatives=True,
+                      playlist_ids=playlist_ids)
     cands = next_candidates(current, pool, target_energy=target_energy, limit=limit)
     return {"current": current, "candidates": cands}
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createSet, getNextCandidates, getTracks } from '../api'
 import CandidateList from './CandidateList'
+import PoolSelector from './PoolSelector'
 import SetTimeline from './SetTimeline'
 
 const LIMIT = 8
@@ -16,6 +17,7 @@ export default function SetBuilder({ seedTracks = null, onSeedConsumed }) {
   // Set en construcción y candidatos. Si venimos con semilla (Biblioteca o set guardado), arrancamos con esos tracks.
   const [set, setSet] = useState(() => (seedTracks && seedTracks.length ? [...seedTracks] : []))
   const [energyDir, setEnergyDir] = useState('similar') // 'similar' | 'mas' | 'menos'
+  const [poolIds, setPoolIds] = useState([]) // pool de armado (playlists/carpetas); [] = toda la biblioteca
 
   // Guardado del set.
   const [saveOpen, setSaveOpen] = useState(false)
@@ -72,6 +74,7 @@ export default function SetBuilder({ seedTracks = null, onSeedConsumed }) {
         limit: LIMIT,
         targetEnergy: targetEnergy(),
         mode,
+        playlistIds: poolIds,
       })
       // no re-sugerir tracks que ya están en el set
       setCandidates(data.filter((c) => !setIds.has(c.track_id)))
@@ -80,7 +83,7 @@ export default function SetBuilder({ seedTracks = null, onSeedConsumed }) {
       setCandError(e.message || 'No se pudo conectar con el backend')
       setCandStatus('error')
     }
-  }, [last, targetEnergy, mode, setIds])
+  }, [last, targetEnergy, mode, setIds, poolIds])
 
   useEffect(() => {
     loadCandidates()
@@ -150,6 +153,8 @@ export default function SetBuilder({ seedTracks = null, onSeedConsumed }) {
 
   return (
     <div className="builder">
+      <PoolSelector poolIds={poolIds} onChange={setPoolIds} />
+
       {set.length === 0 ? (
         <div className="start-picker">
           <h2>Elegí el track de arranque</h2>

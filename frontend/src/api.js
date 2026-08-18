@@ -20,19 +20,29 @@ export async function getTracks({ quality, collection, onlyRepresentatives } = {
 }
 
 // Candidatos para el siguiente track del set, dado el track actual.
-// opts: { trackId, limit, targetEnergy, mode }
-export async function getNextCandidates({ trackId, limit, targetEnergy, mode } = {}) {
+// opts: { trackId, limit, targetEnergy, mode, playlistIds }
+export async function getNextCandidates({ trackId, limit, targetEnergy, mode, playlistIds } = {}) {
   const params = new URLSearchParams()
   params.set('track_id', String(trackId))
   if (limit) params.set('limit', String(limit))
   if (targetEnergy != null) params.set('target_energy', String(targetEnergy))
   if (mode) params.set('mode', mode)
+  for (const id of playlistIds || []) params.append('playlist_ids', String(id))
 
   const res = await fetch(`${API_URL}/next-candidates?${params.toString()}`)
   if (!res.ok) {
     throw new Error(`El backend respondió ${res.status}`)
   }
   return res.json()
+}
+
+// Cantidad de tracks en el pool de las playlists/carpetas seleccionadas.
+export async function getPoolSize(playlistIds) {
+  const params = new URLSearchParams()
+  for (const id of playlistIds || []) params.append('playlist_ids', String(id))
+  const res = await fetch(`${API_URL}/pool?${params.toString()}`)
+  if (!res.ok) throw new Error(`El backend respondió ${res.status}`)
+  return res.json() // { track_count }
 }
 
 // --- Sets guardados ---

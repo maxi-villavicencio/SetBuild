@@ -453,8 +453,11 @@ thead th.action-col { cursor: default; }
 
 .tree { list-style: none; margin: 0; padding: 0; }
 .tree .tree { margin: 0; }
+.tree-row { display: flex; align-items: center; gap: 6px; }
+.tree-check { flex: none; accent-color: var(--accent); cursor: pointer; width: 15px; height: 15px; }
 .tree-folder, .tree-playlist {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -490,6 +493,33 @@ thead th.action-col { cursor: default; }
 }
 .rk-playlist-head h2 { font-size: 16px; font-weight: 600; margin: 0; }
 .state.dim { color: var(--text-dim); }
+
+/* --- Selector de POOL (Armar set) --- */
+.pool-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+.pool-label { color: var(--text-dim); }
+.pool-value { font-weight: 600; }
+.pool-count { color: var(--accent); font-variant-numeric: tabular-nums; }
+.pool-bar .spacer { flex: 1; }
+.pool-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 8px;
+  margin-bottom: 14px;
+  max-height: 46vh;
+  overflow: auto;
+}
 
 /* --- Reproductor: botón play por track --- */
 .play-btn {

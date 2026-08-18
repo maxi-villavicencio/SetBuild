@@ -108,16 +108,19 @@ def next_candidates(
         "realista", description="limpio = lossless de Maxi; realista = todo"),
     quality: Optional[Literal["lossless", "compressed"]] = Query(None),
     collection: Optional[Literal["Maxi", "Zoe"]] = Query(None),
+    playlist_ids: Optional[List[int]] = Query(
+        None, description="Acota el pool a los tracks de esas playlists/carpetas de Rekordbox"),
 ):
     """Dado un track actual, devuelve los mejores candidatos para el siguiente track del set.
 
     Filtros duros: BPM +/-2 y Camelot compatible (misma/+-1/relativo/+7 energy boost). Ranking:
     genero -> energia -> transicion segura antes que +7 -> BPM. Excluye el track actual y usa
     solo representantes. Un candidato sin key/energia aparece despriorizado y marcado en `reasons`.
+    Con `playlist_ids`, el pool se restringe a esas playlists/carpetas (union, carpetas expandidas).
     """
     result = suggest_next(
         track_id, limit=limit, target_energy=target_energy, mode=mode,
-        quality=quality, collection=collection)
+        quality=quality, collection=collection, playlist_ids=playlist_ids)
     if result is None:
         raise HTTPException(status_code=404, detail=f"No existe el track_id {track_id}")
     # Adelanta en segundo plano la conversion de los candidatos AIFF (no bloquea la respuesta).
@@ -243,6 +246,15 @@ PlaylistNode.model_rebuild()
 def playlists_tree():
     """Jerarquia completa de carpetas y playlists de Rekordbox (arbol), ordenada por seq."""
     return get_tree()
+
+
+@app.get("/pool")
+def pool_size(
+    playlist_ids: Optional[List[int]] = Query(
+        None, description="Playlists/carpetas seleccionadas; sin esto = toda la biblioteca"),
+):
+    """Cantidad de tracks (representantes) en el pool de las playlists/carpetas seleccionadas."""
+    return {"track_count": len(get_tracks(only_representatives=True, playlist_ids=playlist_ids))}
 
 
 @app.get("/playlists/{rb_id}/tracks", response_model=List[Track])

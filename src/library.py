@@ -87,7 +87,36 @@ def get_track_file_path(track_id):
     return (True, row[0])
 
 
-def get_tracks(quality=None, collection=None, only_representatives=False):
+def resolve_playlist_ids(selected_ids):
+    """Expande una seleccion de nodos de Rekordbox (playlists y/o carpetas) al set de rb_id de
+    PLAYLISTS que cubre. Las carpetas se expanden recursivamente a sus playlists descendientes.
+    Ids inexistentes se ignoran (degradacion con gracia)."""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT rb_id, node_type, parent_id FROM dbo.rb_playlists")
+    nodes = {r[0]: (r[1], r[2]) for r in cur.fetchall()}  # rb_id -> (node_type, parent_id)
+    conn.close()
+    children = {}
+    for rid, (_ntype, parent) in nodes.items():
+        children.setdefault(parent, []).append(rid)
+
+    out, seen, stack = set(), set(), list(selected_ids)
+    while stack:
+        rid = stack.pop()
+        if rid in seen:
+            continue
+        seen.add(rid)
+        info = nodes.get(rid)
+        if info is None:
+            continue  # id que no existe -> se ignora
+        if info[0] == "playlist":
+            out.add(rid)
+        else:  # carpeta -> encolar sus hijos (que pueden ser carpetas -> recursivo)
+            stack.extend(children.get(rid, []))
+    return out
+
+
+def get_tracks(quality=None, collection=None, only_representatives=False, playlist_ids=None):
     """Devuelve la biblioteca como lista de dicts.
 
     LEFT JOIN a track_features: un track sin features igual aparece (energy_score None).
@@ -96,6 +125,8 @@ def get_tracks(quality=None, collection=None, only_representatives=False):
       - collection: 'Maxi' | 'Zoe'
       - only_representatives: un solo track por grupo de dedup. Usa la misma convencion
         que el armador: si nunca se corrio dedupe (is_representative NULL) no filtra.
+      - playlist_ids: lista de rb_id (playlists y/o carpetas) -> acota el pool a los tracks de
+        esas playlists (union, carpetas expandidas). Si no resuelve ninguna -> pool vacio.
     """
     where = []
     params = []
@@ -107,6 +138,15 @@ def get_tracks(quality=None, collection=None, only_representatives=False):
         params.append(collection)
     if only_representatives:
         where.append("(t.is_representative = 1 OR t.is_representative IS NULL)")
+    if playlist_ids:
+        resolved = resolve_playlist_ids(playlist_ids)
+        if resolved:
+            ph = ",".join("?" * len(resolved))
+            where.append(f"t.rb_content_id IN (SELECT rb_content_id FROM dbo.rb_playlist_tracks"
+                         f" WHERE rb_playlist_id IN ({ph}))")
+            params.extend(resolved)
+        else:
+            where.append("1 = 0")  # seleccion sin playlists validas -> pool vacio (gracia)
 
     sql = ("SELECT " + _SELECT_COLS +
            " FROM dbo.tracks t LEFT JOIN dbo.track_features f ON f.track_id = t.track_id")
