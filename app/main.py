@@ -21,9 +21,10 @@ from src.build_set import suggest_next
 from src.pretranscode import warm_bg
 from src.export_xml import build_set_xml, safe_filename
 from src.library import (
-    delete_set, get_set, get_set_for_export, get_track_file_path, get_tracks,
-    list_sets, save_set,
+    delete_set, get_playlist_tracks, get_set, get_set_for_export, get_track_file_path,
+    get_tracks, list_sets, save_set,
 )
+from src.rb_playlists import get_tree
 
 app = FastAPI(
     title="DJ Set Builder API",
@@ -222,3 +223,33 @@ def export_set(set_id: int):
         media_type="application/xml",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# --- Playlists de Rekordbox (capa de navegacion; no reemplaza el genero canonico) ---
+
+class PlaylistNode(BaseModel):
+    rb_id: int
+    name: Optional[str] = None
+    node_type: str  # 'folder' | 'playlist'
+    seq: Optional[int] = None
+    track_count: int = 0
+    children: List["PlaylistNode"] = []
+
+
+PlaylistNode.model_rebuild()
+
+
+@app.get("/playlists", response_model=List[PlaylistNode])
+def playlists_tree():
+    """Jerarquia completa de carpetas y playlists de Rekordbox (arbol), ordenada por seq."""
+    return get_tree()
+
+
+@app.get("/playlists/{rb_id}/tracks", response_model=List[Track])
+def playlist_tracks(rb_id: int):
+    """Tracks de una playlist de Rekordbox en orden (resueltos a la biblioteca; los que no estan
+    en nuestra tabla tracks se saltean). 404 si la playlist no existe."""
+    tracks = get_playlist_tracks(rb_id)
+    if tracks is None:
+        raise HTTPException(status_code=404, detail=f"No existe la playlist {rb_id}")
+    return tracks

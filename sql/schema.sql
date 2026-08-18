@@ -67,3 +67,23 @@ IF COL_LENGTH('dbo.tracks', 'collection') IS NULL
 -- Sprint 9 - genero canonico desde las playlists de Rekordbox.
 IF COL_LENGTH('dbo.tracks', 'genre_canonical') IS NULL
     ALTER TABLE dbo.tracks ADD genre_canonical NVARCHAR(100) NULL;
+
+-- Sprint 21 - estructura completa de carpetas/playlists de Rekordbox (capa de navegacion,
+-- NO reemplaza genre_canonical). Se refresca full en cada 'import-playlists' / ingest.
+-- rb_id es el ID del nodo en Rekordbox (grande -> BIGINT).
+IF OBJECT_ID('dbo.rb_playlists', 'U') IS NULL
+CREATE TABLE dbo.rb_playlists (
+    rb_id      BIGINT PRIMARY KEY,   -- ID del nodo en Rekordbox
+    name       NVARCHAR(1000),
+    node_type  NVARCHAR(10),         -- 'folder' | 'playlist'
+    parent_id  BIGINT,               -- rb_id del padre; NULL = raiz
+    seq        INT                   -- orden dentro del padre
+);
+
+IF OBJECT_ID('dbo.rb_playlist_tracks', 'U') IS NULL
+CREATE TABLE dbo.rb_playlist_tracks (
+    rb_playlist_id BIGINT,           -- rb_id de la playlist
+    position       INT,              -- orden dentro de la playlist (1..N)
+    rb_content_id  NVARCHAR(64),     -- ID del track en Rekordbox (matchea dbo.tracks.rb_content_id)
+    PRIMARY KEY (rb_playlist_id, position)
+);

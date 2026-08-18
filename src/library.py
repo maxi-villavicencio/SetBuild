@@ -43,6 +43,28 @@ def get_track(track_id):
     return _row_to_track(row) if row else None
 
 
+def get_playlist_tracks(rb_playlist_id):
+    """Tracks de una playlist de Rekordbox EN ORDEN, resueltos a nuestra biblioteca (mismos campos).
+
+    Los rb_content_id que no estan en dbo.tracks se saltean (JOIN). Devuelve None si la playlist
+    no existe (para 404); lista (posiblemente vacia) si existe (carpeta o playlist vacia -> [])."""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM dbo.rb_playlists WHERE rb_id = ?", rb_playlist_id)
+    if cur.fetchone() is None:
+        conn.close()
+        return None
+    cur.execute(
+        "SELECT " + _SELECT_COLS +
+        " FROM dbo.rb_playlist_tracks pt"
+        " JOIN dbo.tracks t ON t.rb_content_id = pt.rb_content_id"
+        " LEFT JOIN dbo.track_features f ON f.track_id = t.track_id"
+        " WHERE pt.rb_playlist_id = ? ORDER BY pt.position", rb_playlist_id)
+    rows = [_row_to_track(r) for r in cur.fetchall()]
+    conn.close()
+    return rows
+
+
 def get_all_track_paths():
     """Devuelve [(track_id, file_path)] de todos los tracks con file_path (para pre-transcodificar)."""
     conn = get_conn()

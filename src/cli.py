@@ -34,6 +34,7 @@ def main():
     p_an.add_argument("--all", action="store_true", help="Reanaliza todos, no solo los faltantes")
 
     sub.add_parser("recompute-energy", help="Normaliza features -> energy_score 1..10")
+    sub.add_parser("import-playlists", help="Importa carpetas/playlists de Rekordbox (capa de navegacion)")
 
     p_dd = sub.add_parser("dedupe", help="Agrupa tracks que son el mismo tema (de-duplicacion)")
     p_dd.add_argument("--report", action="store_true", help="Imprime totales y ejemplos de grupos")
@@ -84,9 +85,14 @@ def main():
         print("Esquema creado.")
     elif args.cmd == "ingest":
         ingest_mod.ingest()
+        from . import rb_playlists
+        rb_playlists.import_playlists()
         if not args.no_pretranscode:
             from . import pretranscode
             pretranscode.pretranscode_all()
+    elif args.cmd == "import-playlists":
+        from . import rb_playlists
+        rb_playlists.import_playlists()
     elif args.cmd == "analyze":
         analyze_mod.analyze(only_missing=not args.all)
     elif args.cmd == "recompute-energy":
