@@ -2,20 +2,24 @@ import { useCallback, useEffect, useState } from 'react'
 import { getTracks } from '../api'
 import FiltersBar from './FiltersBar'
 import GroupedView from './GroupedView'
+import RekordboxView from './RekordboxView'
 import TracksTable from './TracksTable'
 
-// Vista "Biblioteca": tabla de tracks con filtros. Vista plana o agrupada por género.
+// Vista "Biblioteca" con 3 vistas: Rekordbox (default), Por género y Plana.
 export default function LibraryView({ onStartFromTrack }) {
   const [filters, setFilters] = useState({
     quality: '',
     onlyRepresentatives: false,
   })
-  const [view, setView] = useState('plana') // 'plana' | 'agrupada'
+  const [view, setView] = useState('rekordbox') // default: organizada como en Rekordbox
   const [tracks, setTracks] = useState([])
   const [status, setStatus] = useState('loading') // 'loading' | 'ok' | 'error'
   const [error, setError] = useState(null)
+  const [rkCount, setRkCount] = useState(0) // conteo mostrado en la vista Rekordbox
 
+  // getTracks (server-side) solo para plana/agrupada; Rekordbox trae su data de los endpoints de playlists.
   const load = useCallback(async () => {
+    if (view === 'rekordbox') return
     setStatus('loading')
     setError(null)
     try {
@@ -26,40 +30,52 @@ export default function LibraryView({ onStartFromTrack }) {
       setError(e.message || 'No se pudo conectar con el backend')
       setStatus('error')
     }
-  }, [filters])
+  }, [filters, view])
 
   useEffect(() => {
     load()
   }, [load])
+
+  const count = view === 'rekordbox' ? rkCount : tracks.length
 
   return (
     <>
       <FiltersBar
         filters={filters}
         onChange={setFilters}
-        count={tracks.length}
+        count={count}
         view={view}
         onViewChange={setView}
       />
 
-      {status === 'loading' && <div className="state">Cargando biblioteca…</div>}
+      {view === 'rekordbox' ? (
+        <RekordboxView
+          filters={filters}
+          onStartFromTrack={onStartFromTrack}
+          onShownCount={setRkCount}
+        />
+      ) : (
+        <>
+          {status === 'loading' && <div className="state">Cargando biblioteca…</div>}
 
-      {status === 'error' && (
-        <div className="state error">
-          <p>No se pudo cargar la biblioteca: {error}.</p>
-          <p className="dim">¿Está corriendo el backend (uvicorn app.main:app)?</p>
-          <button onClick={load}>Reintentar</button>
-        </div>
+          {status === 'error' && (
+            <div className="state error">
+              <p>No se pudo cargar la biblioteca: {error}.</p>
+              <p className="dim">¿Está corriendo el backend (uvicorn app.main:app)?</p>
+              <button onClick={load}>Reintentar</button>
+            </div>
+          )}
+
+          {status === 'ok' &&
+            (tracks.length === 0 ? (
+              <div className="state">No hay tracks para estos filtros.</div>
+            ) : view === 'plana' ? (
+              <TracksTable tracks={tracks} onStartFromTrack={onStartFromTrack} />
+            ) : (
+              <GroupedView tracks={tracks} onStartFromTrack={onStartFromTrack} />
+            ))}
+        </>
       )}
-
-      {status === 'ok' &&
-        (tracks.length === 0 ? (
-          <div className="state">No hay tracks para estos filtros.</div>
-        ) : view === 'plana' ? (
-          <TracksTable tracks={tracks} onStartFromTrack={onStartFromTrack} />
-        ) : (
-          <GroupedView tracks={tracks} onStartFromTrack={onStartFromTrack} />
-        ))}
     </>
   )
 }

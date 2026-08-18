@@ -17,30 +17,39 @@ export default function FiltersBar({ filters, onChange, count, total, view, onVi
         </select>
       </div>
 
-      <label className="toggle">
-        <input
-          type="checkbox"
-          checked={filters.onlyRepresentatives}
-          onChange={(e) => set({ onlyRepresentatives: e.target.checked })}
-        />
-        Solo representantes (sin duplicados)
-      </label>
+      {/* "Solo representantes" no aplica en la vista Rekordbox (que muestra las playlists tal cual). */}
+      {view !== 'rekordbox' && (
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={filters.onlyRepresentatives}
+            onChange={(e) => set({ onlyRepresentatives: e.target.checked })}
+          />
+          Solo representantes (sin duplicados)
+        </label>
+      )}
 
       <div className="spacer" />
 
       {onViewChange && (
         <div className="segmented" role="group" aria-label="Vista">
           <button
-            className={view === 'plana' ? 'on' : ''}
-            onClick={() => onViewChange('plana')}
+            className={view === 'rekordbox' ? 'on' : ''}
+            onClick={() => onViewChange('rekordbox')}
           >
-            Plana
+            Rekordbox
           </button>
           <button
             className={view === 'agrupada' ? 'on' : ''}
             onClick={() => onViewChange('agrupada')}
           >
             Por género
+          </button>
+          <button
+            className={view === 'plana' ? 'on' : ''}
+            onClick={() => onViewChange('plana')}
+          >
+            Plana
           </button>
         </div>
       )}

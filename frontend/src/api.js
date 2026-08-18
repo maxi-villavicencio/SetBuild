@@ -73,4 +73,18 @@ export function audioUrl(trackId) {
   return `${API_URL}/tracks/${trackId}/audio`
 }
 
+// --- Playlists de Rekordbox (Sprint 21) ---
+
+export async function getPlaylists() {
+  const res = await fetch(`${API_URL}/playlists`)
+  if (!res.ok) throw new Error(`El backend respondió ${res.status}`)
+  return res.json()
+}
+
+export async function getPlaylistTracks(rbId) {
+  const res = await fetch(`${API_URL}/playlists/${rbId}/tracks`)
+  if (!res.ok) throw new Error(`El backend respondió ${res.status}`)
+  return res.json()
+}
+
 export { API_URL }

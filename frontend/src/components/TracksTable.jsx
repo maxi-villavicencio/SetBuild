@@ -13,8 +13,10 @@ const COLUMNS = [
   { key: 'genre_canonical', label: 'Género' },
 ]
 
-export default function TracksTable({ tracks, onStartFromTrack }) {
-  const { sort, onSort } = useTableSort({ key: 'energy_score', dir: 'desc' })
+// defaultSort: orden inicial. Por defecto energía↓ (vista plana). La vista Rekordbox pasa
+// { key: null } = "orden original" (respeta el orden de la playlist hasta que se clickea una columna).
+export default function TracksTable({ tracks, onStartFromTrack, defaultSort }) {
+  const { sort, onSort } = useTableSort(defaultSort || { key: 'energy_score', dir: 'desc' })
   const sorted = useMemo(() => sortTracks(tracks, sort, COLUMNS), [tracks, sort])
 
   return (
