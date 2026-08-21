@@ -14,10 +14,10 @@ const GROUPED_COLUMNS = [
   { key: 'quality', label: 'Calidad' },
 ]
 
-function TrackRow({ t, onStartFromTrack }) {
+function TrackRow({ t, queue, index, onStartFromTrack }) {
   return (
     <tr>
-      <td className="play-col"><PlayButton trackId={t.track_id} /></td>
+      <td className="play-col"><PlayButton track={t} queue={queue} index={index} /></td>
       <td title={t.title || ''}>{t.title || <span className="dim">—</span>}</td>
       <td title={t.artist || ''}>{t.artist || <span className="dim">—</span>}</td>
       <td className="num mono">{t.bpm != null ? t.bpm.toFixed(1) : '—'}</td>
@@ -89,8 +89,14 @@ function GenreFolder({ genre, items, isOpen, onToggle, onStartFromTrack }) {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((t) => (
-                <TrackRow key={t.track_id} t={t} onStartFromTrack={onStartFromTrack} />
+              {sorted.map((t, i) => (
+                <TrackRow
+                  key={t.track_id}
+                  t={t}
+                  queue={sorted}
+                  index={i}
+                  onStartFromTrack={onStartFromTrack}
+                />
               ))}
             </tbody>
           </table>

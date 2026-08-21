@@ -42,9 +42,9 @@ export default function TracksTable({ tracks, onStartFromTrack, defaultSort }) {
           </tr>
         </thead>
         <tbody>
-          {sorted.map((t) => (
+          {sorted.map((t, i) => (
             <tr key={t.track_id}>
-              <td className="play-col"><PlayButton trackId={t.track_id} /></td>
+              <td className="play-col"><PlayButton track={t} queue={sorted} index={i} /></td>
               <td title={t.title || ''}>{t.title || <span className="dim">—</span>}</td>
               <td title={t.artist || ''}>{t.artist || <span className="dim">—</span>}</td>
               <td className="num mono">{t.bpm != null ? t.bpm.toFixed(1) : '—'}</td>

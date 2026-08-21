@@ -49,9 +49,9 @@ export default function CandidateList({ status, error, candidates, onPick, onRet
 
   return (
     <ul className="candidates">
-      {candidates.map((c) => (
+      {candidates.map((c, i) => (
         <li key={c.track_id} className="cand-row">
-          <PlayButton trackId={c.track_id} />
+          <PlayButton track={c} queue={candidates} index={i} />
           <button className="cand" onClick={() => onPick(c)} title="Agregar al set">
             <span className="mono cand-meta">{c.bpm != null ? c.bpm.toFixed(1) : '—'}</span>
             <span className="mono cand-meta">{c.camelot || '—'}</span>

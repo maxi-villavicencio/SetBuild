@@ -47,7 +47,7 @@ export default function SetTimeline({ set, onUndo, onMoveUp, onMoveDown }) {
         {set.map((t, i) => (
           <li key={`${t.track_id}-${i}`}>
             <span className="pos mono">{i + 1}</span>
-            <PlayButton trackId={t.track_id} />
+            <PlayButton track={t} queue={set} index={i} />
             <span className="set-title">
               <span className="set-track-title">{t.title || '—'}</span>
               <span className="set-sub dim">
