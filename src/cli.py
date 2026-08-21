@@ -26,6 +26,37 @@ def _ids(s):
     return [int(x) for x in s.split(",") if x.strip()]
 
 
+def _refresh(skip_analyze=False, skip_transcode=False):
+    """Corre todo el pipeline de actualizacion en el orden correcto, una vez cada paso.
+
+    Llama las funciones de modulo directamente (no el comando 'ingest', que encadena
+    import-playlists + pretranscode) -> sin duplicar. Cada paso ya es incremental/idempotente.
+    """
+    from . import pretranscode, rb_playlists
+
+    print("REFRESH - corre esto con Rekordbox CERRADO (se lee la master.db en modo lectura).")
+
+    steps = [
+        ("Ingesta de tracks desde Rekordbox", ingest_mod.ingest),
+        ("Importar carpetas/playlists de Rekordbox", rb_playlists.import_playlists),
+        ("Asignar genero canonico desde las playlists", genres_mod.assign_genres),
+        ("Campos derivados (quality/collection) desde el file_path", derive_mod.backfill),
+        ("De-duplicacion (grupos + representante por calidad)", dedupe_mod.dedupe),
+    ]
+    if not skip_analyze:
+        steps.append(("Analisis de audio con librosa (solo faltantes)",
+                      lambda: analyze_mod.analyze(only_missing=True)))
+        steps.append(("Recomputar energy_score", analyze_mod.recompute_energy_scores))
+    if not skip_transcode:
+        steps.append(("Pre-transcodificacion de AIFF a mp3 (cache)", pretranscode.pretranscode_all))
+
+    total = len(steps)
+    for i, (name, fn) in enumerate(steps, 1):
+        print(f"\n==> [{i}/{total}] {name}")
+        fn()
+    print(f"\nRefresh completo ({total} pasos).")
+
+
 def main():
     parser = argparse.ArgumentParser(description="DJ Set Builder")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -87,6 +118,14 @@ def main():
     p_n.add_argument("--playlists", type=_ids, default=None,
                      help="rb_id de playlists/carpetas (coma) que acotan el pool de candidatos")
 
+    p_rf = sub.add_parser("refresh", help="Corre todo el pipeline de actualizacion en orden (con Rekordbox cerrado)")
+    p_rf.add_argument("--skip-analyze", action="store_true",
+                      help="No corre el analisis de audio ni recompute-energy (solo datos)")
+    p_rf.add_argument("--skip-transcode", action="store_true",
+                      help="No pre-transcodifica los AIFF a mp3")
+    p_rf.add_argument("--data-only", action="store_true",
+                      help="Atajo: solo los pasos rapidos de datos (= --skip-analyze --skip-transcode)")
+
     args = parser.parse_args()
 
     if args.cmd == "init-db":
@@ -102,6 +141,9 @@ def main():
     elif args.cmd == "import-playlists":
         from . import rb_playlists
         rb_playlists.import_playlists()
+    elif args.cmd == "refresh":
+        _refresh(skip_analyze=args.skip_analyze or args.data_only,
+                 skip_transcode=args.skip_transcode or args.data_only)
     elif args.cmd == "analyze":
         analyze_mod.analyze(only_missing=not args.all)
     elif args.cmd == "recompute-energy":
