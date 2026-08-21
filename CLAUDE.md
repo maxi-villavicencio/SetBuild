@@ -41,7 +41,7 @@ src/
   ingest.py     lee la master.db de Rekordbox -> tabla tracks
   analyze.py    features de audio (librosa) + energy_score
   build_set.py  armador greedy sobre la curva de energía
-  cli.py        entrypoint (init-db, ingest, analyze, recompute-energy, build)
+  cli.py        entrypoint (refresh = pipeline completo; init-db, ingest, dedupe, build, next, ...)
 sql/schema.sql  esquema de tablas (SQL Server / T-SQL)
 NOTES.md        spec completa (leer antes de diseñar features)
 ```
@@ -53,12 +53,31 @@ NOTES.md        spec completa (leer antes de diseñar features)
 - Python en venv (`.venv`). Rekordbox 7.2.3, pyrekordbox 0.4.4 (la clave se resuelve sola).
 - Correr siempre con Rekordbox cerrado los comandos que tocan la `master.db`.
 
+**Atajo recomendado para actualizar la biblioteca** (con Rekordbox cerrado): un solo comando
+corre todo el pipeline en el orden correcto.
+
 ```
-python -m src.cli init-db
-python -m src.cli ingest
-python -m src.cli analyze
-python -m src.cli recompute-energy
+python -m src.cli init-db     # una vez, crea/migra las tablas
+python -m src.cli refresh      # todo el pipeline (ver flags abajo)
 python -m src.cli build --length 10
+```
+
+`refresh` corre en orden: `ingest` → `import-playlists` → `assign-genre` → `derive-fields` →
+`dedupe` → `analyze` → `recompute-energy` → pre-transcodificación de AIFF. Cada paso es
+incremental/idempotente. Flags: `--data-only` (solo los pasos rápidos de datos, sin análisis ni
+transcodificación), `--skip-analyze` (salta el análisis de audio + energía), `--skip-transcode`.
+
+Los comandos sueltos siguen existiendo como referencia de qué hace cada paso (todos los corre
+`refresh`):
+
+```
+python -m src.cli ingest             # Rekordbox master.db -> tabla tracks (+ playlists + pre-transcode)
+python -m src.cli import-playlists   # carpetas/playlists de Rekordbox -> capa de navegacion
+python -m src.cli assign-genre       # genre_canonical desde las playlists
+python -m src.cli derive-fields      # quality/collection desde el file_path (antes de dedupe)
+python -m src.cli dedupe             # grupos de duplicados + representante por calidad
+python -m src.cli analyze            # librosa -> features (paso lento; solo faltantes)
+python -m src.cli recompute-energy   # features -> energy_score 1..10
 ```
 
 ## Convenciones
