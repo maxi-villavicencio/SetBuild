@@ -494,6 +494,22 @@ thead th.action-col { cursor: default; }
 .rk-playlist-head h2 { font-size: 16px; font-weight: 600; margin: 0; }
 .state.dim { color: var(--text-dim); }
 
+/* Encabezado del pool en la vista Rekordbox (multi-select). */
+.rk-pool-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.rk-pool-count { font-weight: 600; font-variant-numeric: tabular-nums; }
+.rk-pool-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.rk-main .genre-folder { margin-bottom: 8px; }
+
 /* --- Selector de POOL (Armar set) --- */
 .pool-bar {
   display: flex;

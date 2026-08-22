@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { createSet, getNextCandidates, getTracks } from '../api'
+import { createSet, getNextCandidates, getPoolSize, getTracks } from '../api'
 import CandidateList from './CandidateList'
-import PoolSelector from './PoolSelector'
 import SetTimeline from './SetTimeline'
 
 const LIMIT = 8
 const DELTA = 1.5 // cuánto sube/baja la energía objetivo al pedir "más movido/tranqui"
 const clamp = (v) => Math.max(1, Math.min(10, v))
 
-export default function SetBuilder({ seedTracks = null, onSeedConsumed }) {
+export default function SetBuilder({ seedTracks = null, seedPool = null, onSeedConsumed }) {
   // Biblioteca (representantes) para elegir el track de arranque.
   const [allTracks, setAllTracks] = useState([])
   const [libStatus, setLibStatus] = useState('loading')
@@ -17,7 +16,10 @@ export default function SetBuilder({ seedTracks = null, onSeedConsumed }) {
   // Set en construcción y candidatos. Si venimos con semilla (Biblioteca o set guardado), arrancamos con esos tracks.
   const [set, setSet] = useState(() => (seedTracks && seedTracks.length ? [...seedTracks] : []))
   const [energyDir, setEnergyDir] = useState('similar') // 'similar' | 'mas' | 'menos'
-  const [poolIds, setPoolIds] = useState([]) // pool de armado (playlists/carpetas); [] = toda la biblioteca
+  // Pool de armado (playlists/carpetas); [] = toda la biblioteca. Viene de la vista Rekordbox por semilla.
+  const [poolIds, setPoolIds] = useState(() => (seedPool?.ids ? [...seedPool.ids] : []))
+  const [poolNames, setPoolNames] = useState(() => (seedPool?.names ? [...seedPool.names] : []))
+  const [poolCount, setPoolCount] = useState(null)
 
   // Guardado del set.
   const [saveOpen, setSaveOpen] = useState(false)
@@ -37,6 +39,27 @@ export default function SetBuilder({ seedTracks = null, onSeedConsumed }) {
 
   const last = set[set.length - 1]
   const setIds = useMemo(() => new Set(set.map((t) => t.track_id)), [set])
+
+  // Conteo del pool activo (para el indicador discreto). [] = toda la biblioteca -> sin conteo.
+  useEffect(() => {
+    if (!poolIds.length) {
+      setPoolCount(null)
+      return
+    }
+    let alive = true
+    getPoolSize(poolIds)
+      .then((r) => alive && setPoolCount(r.track_count))
+      .catch(() => alive && setPoolCount(null))
+    return () => {
+      alive = false
+    }
+  }, [poolIds])
+
+  // Limpiar el pool sin salir de Armar set: vuelve a toda la biblioteca.
+  const clearPool = () => {
+    setPoolIds([])
+    setPoolNames([])
+  }
 
   // Cargar la biblioteca una vez para el buscador de arranque.
   const loadLibrary = useCallback(async () => {
@@ -153,7 +176,17 @@ export default function SetBuilder({ seedTracks = null, onSeedConsumed }) {
 
   return (
     <div className="builder">
-      <PoolSelector poolIds={poolIds} onChange={setPoolIds} />
+      {poolIds.length > 0 && (
+        <div className="pool-bar">
+          <span className="pool-label">Pool:</span>
+          <span className="pool-value">{poolNames.join(', ') || `${poolIds.length} seleccionadas`}</span>
+          {poolCount != null && <span className="pool-count">— {poolCount} tracks</span>}
+          <div className="spacer" />
+          <button className="ghost-btn" onClick={clearPool} title="Volver a toda la biblioteca">
+            Limpiar pool
+          </button>
+        </div>
+      )}
 
       {set.length === 0 ? (
         <div className="start-picker">

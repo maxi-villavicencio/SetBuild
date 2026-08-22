@@ -17,17 +17,26 @@ const TABS = [
 function AppShell() {
   const { current } = useAudio()
   const [tab, setTab] = useState('biblioteca')
-  // Tracks semilla para arrancar/abrir un set en "Armar set" (se consumen al montar SetBuilder).
+  // Semilla para arrancar/abrir un set en "Armar set" (se consume al montar SetBuilder).
   const [seedTracks, setSeedTracks] = useState(null)
+  // Pool activo que viene de la vista Rekordbox: { ids, names } | null.
+  const [seedPool, setSeedPool] = useState(null)
 
-  // Desde la Biblioteca: arrancar un set con un track.
-  const startFromTrack = (track) => {
+  const consumeSeed = () => {
+    setSeedTracks(null)
+    setSeedPool(null)
+  }
+
+  // Desde la Biblioteca: arrancar un set con un track (y, si viene de Rekordbox, con su pool).
+  const startFromTrack = (track, pool = null) => {
     setSeedTracks([track])
+    setSeedPool(pool)
     setTab('armar')
   }
-  // Desde "Mis sets": abrir un set guardado (tracks en orden) para seguir editándolo.
+  // Desde "Mis sets": abrir un set guardado (tracks en orden), sin pool.
   const openSet = (tracks) => {
     setSeedTracks(tracks)
+    setSeedPool(null)
     setTab('armar')
   }
 
@@ -50,7 +59,7 @@ function AppShell() {
 
       {tab === 'biblioteca' && <LibraryView onStartFromTrack={startFromTrack} />}
       {tab === 'armar' && (
-        <SetBuilder seedTracks={seedTracks} onSeedConsumed={() => setSeedTracks(null)} />
+        <SetBuilder seedTracks={seedTracks} seedPool={seedPool} onSeedConsumed={consumeSeed} />
       )}
       {tab === 'sets' && <MySets onOpenSet={openSet} />}
 
