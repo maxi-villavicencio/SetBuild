@@ -156,6 +156,12 @@ para la versión pública: paginación (cargar de a N con scroll) o
 virtualización (renderizar solo filas visibles). No urgente para uso
 personal.
 
+- La vista Rekordbox con "todo tildado" al inicio pide los tracks de TODAS
+  las playlists (un GET por playlist). Con pocas playlists anda bien; con
+  muchas (50+, DJ real) el primer render se pone lento. Optimizar para el
+  público: carga diferida por sección (cargar los tracks de una playlist
+  recién al abrirla/al hacer scroll) o secciones colapsadas por defecto.
+
 ## Roadmap por fases
 
 - **Fase 0 — Repo y setup**: GitHub, `.gitignore`, estructura, Claude Code enlazado, `CLAUDE.md`.

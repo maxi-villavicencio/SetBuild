@@ -494,10 +494,11 @@ thead th.action-col { cursor: default; }
 .rk-playlist-head h2 { font-size: 16px; font-weight: 600; margin: 0; }
 .state.dim { color: var(--text-dim); }
 
-/* Encabezado del pool en la vista Rekordbox (multi-select). */
-.rk-pool-head {
+/* Barra superior de la vista Rekordbox: toggle del panel de playlists + conteo del pool.
+   Siempre visible (aunque el árbol esté colapsado). */
+.rk-toolbar {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
   padding: 10px 14px;
@@ -507,7 +508,14 @@ thead th.action-col { cursor: default; }
   margin-bottom: 12px;
 }
 .rk-pool-count { font-weight: 600; font-variant-numeric: tabular-nums; }
-.rk-pool-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.rk-pool-names {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
 .rk-main .genre-folder { margin-bottom: 8px; }
 
 /* --- Selector de POOL (Armar set) --- */
