@@ -98,6 +98,22 @@ npm run dev
 Abre en http://localhost:5173. Si tu backend no está en `http://127.0.0.1:8000`, seteá
 `VITE_API_URL` (ej. en `frontend/.env`: `VITE_API_URL=http://127.0.0.1:8001`).
 
+## Levantar todo de un paso (Windows)
+
+`start.bat` en la raíz levanta backend y frontend en ventanas separadas y abre el
+navegador solo. Dos formas de usarlo:
+
+- **Doble clic** sobre `start.bat` desde el explorador, o
+- desde una terminal: `.\start.bat`
+
+Qué hace: activa el venv y corre `uvicorn app.main:app --reload` en una ventana, corre
+`npm run dev` (Vite) en otra, espera unos segundos y abre http://localhost:5173. Usa su
+propia ubicación como base, así funciona sin importar desde dónde lo ejecutes. Para
+detener los servidores, cerrá esas dos ventanas.
+
+Requisitos previos (una vez): tener el venv en `.venv`, las dependencias de Python
+instaladas y `npm install` corrido dentro de `frontend/` (ver secciones anteriores).
+
 ## Reproducción de audio (ffmpeg)
 
 El botón ▶ de cada track reproduce el archivo local. Los formatos que el navegador soporta
