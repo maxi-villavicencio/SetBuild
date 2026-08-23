@@ -36,6 +36,10 @@ build/
 *.xml
 rekordbox_key*
 
+# Basura que reaparece en la raíz (redirecciones accidentales de start.bat / resync de OneDrive)
+/npm
+/uvicorn
+
 # Editores / SO
 .vscode/
 .idea/
