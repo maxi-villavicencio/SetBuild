@@ -179,7 +179,10 @@ def save_set(order, name):
 #     (misma / +-1 / relativo, reusando camelot.py; +7 solo con energy_boost).
 #   Ranking: 1) genero (mismo -> compatible -> sin genero), 2) energia, 3) BPM.
 #   Degradacion con gracia: sin genero = compatible con todo; sin camelot/BPM pasa pero
-#     despriorizado; sin energia se hunde por distancia. Nada rompe.
+#     despriorizado; sin energia se hunde por distancia.
+# El filtro de genero se aplica UNA vez (Sprint 28): con pool activo el pool reemplaza el
+#   filtro de genero (el sugeridor solo combina por BPM/tonalidad/energia dentro del pool);
+#   sin pool, el sugeridor aplica el filtro de genero (mismo + vecinos). Ver genre_filter. Nada rompe.
 
 _ENERGY_SIMILAR = 0.75  # margen para considerar la energia "similar" al objetivo
 _BPM_HARD = 2.0         # filtro duro de BPM: +/-2 absoluto respecto del track actual
@@ -239,7 +242,7 @@ def _energy_reason(cand_e, target):
     return abs(diff), ("mas movido" if diff > 0 else "mas tranqui")
 
 
-def next_candidates(current, pool, target_energy=None, limit=6):
+def next_candidates(current, pool, target_energy=None, limit=6, genre_filter=True):
     """Dado un track actual, devuelve los mejores candidatos del pool (dicts estilo library).
 
     Filtros duros: BPM +/-2 y Camelot compatible (misma/+-1/relativo/+7, reusa camelot.py con
@@ -249,6 +252,11 @@ def next_candidates(current, pool, target_energy=None, limit=6):
     El +7 (energy boost) suma opciones pero no se pone arriba de una mezcla segura de energia
     equivalente. Degradacion con gracia: None de genero nunca excluye; sin camelot/BPM pasa
     despriorizado; sin energia se hunde por distancia.
+
+    genre_filter: si True (sin pool), el genero filtra (excluye incompatibles) y ordena como
+    siempre. Si False (hay pool activo), el genero NO excluye ni ordena: el usuario ya eligio los
+    generos al armar el pool, asi que el sugeridor solo combina por BPM/tonalidad/energia dentro
+    del pool. El genero sigue como dato/etiqueta (y como motivo cuando aplica), pero no achica.
     """
     cur_cam = current.get("camelot")
     cur_bpm = current.get("bpm")
@@ -267,8 +275,15 @@ def next_candidates(current, pool, target_energy=None, limit=6):
         if key_status == "exclude":
             continue
         g_rank, g_reason = _genre_rank(cur_genre, t.get("genre_canonical"))
-        if g_rank is None:
-            continue  # genero no compatible
+        if genre_filter:
+            if g_rank is None:
+                continue  # sin pool: genero no compatible -> excluir
+            g_sort = g_rank
+        else:
+            # Con pool activo: el genero no excluye ni ordena (queda como dato/motivo informativo).
+            g_sort = 0
+            if g_rank is None:
+                g_reason = None
 
         e_dist, e_reason = _energy_reason(t.get("energy_score"), target)
         incompleto = 1 if (key_status == "gracia" or bpm_status == "gracia") else 0
@@ -279,7 +294,8 @@ def next_candidates(current, pool, target_energy=None, limit=6):
         cand = {k: t.get(k) for k in _CAND_FIELDS}
         cand["reasons"] = reasons
         # orden: genero -> completo -> nivel de energia -> segura antes que +7 -> energia fina -> BPM
-        scored.append(((g_rank, incompleto, e_level, boost_flag, e_dist, bpm_dist), cand))
+        # (con pool, g_sort=0 para todos => el orden arranca por energia)
+        scored.append(((g_sort, incompleto, e_level, boost_flag, e_dist, bpm_dist), cand))
 
     scored.sort(key=lambda x: x[0])
     return [cand for _, cand in scored[:limit]]
@@ -295,7 +311,9 @@ def suggest_next(track_id, limit=6, target_energy=None, mode="realista",
     eff_q, eff_c = _resolve_filters(mode, quality, collection)
     pool = get_tracks(quality=eff_q, collection=eff_c, only_representatives=True,
                       playlist_ids=playlist_ids)
-    cands = next_candidates(current, pool, target_energy=target_energy, limit=limit)
+    # Con pool activo (playlist_ids) el genero NO se vuelve a filtrar: el pool ya lo hizo.
+    cands = next_candidates(current, pool, target_energy=target_energy, limit=limit,
+                            genre_filter=not playlist_ids)
     return {"current": current, "candidates": cands}
 
 

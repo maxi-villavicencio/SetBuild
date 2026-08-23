@@ -67,6 +67,11 @@ Detalles:
 - El armado prioriza en dos niveles: **primero mismo género**, y **segundo otros géneros
   compatibles** (misma familia o familias que combinan). El mismo género es la opción por
   defecto; el cruce compatible aparece como alternativa para abrir el abanico a propósito.
+- **El filtro de género se aplica una vez** (Sprint 28). Con **pool activo** (el usuario eligió
+  carpetas/playlists en la vista Rekordbox), el pool **reemplaza** el filtro de género: el
+  sugeridor solo combina por **BPM / tonalidad / energía** dentro del pool (el género queda como
+  dato/etiqueta, no excluye). **Sin pool**, el sugeridor **sí** aplica el filtro de género (mismo
+  + vecinos compatibles). Los filtros duros BPM ±2 y Camelot no cambian en ningún caso.
 
 ## Jerarquía de filtros del armador
 
