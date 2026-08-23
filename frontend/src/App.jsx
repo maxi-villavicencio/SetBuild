@@ -21,6 +21,9 @@ function AppShell() {
   const [seedTracks, setSeedTracks] = useState(null)
   // Pool activo que viene de la vista Rekordbox: { ids, names } | null.
   const [seedPool, setSeedPool] = useState(null)
+  // Selección del pool de la vista Rekordbox (ids de playlists tildadas). Vive acá para PERSISTIR
+  // al cambiar de pestaña/vista (RekordboxView se desmonta). null = todavía sin inicializar.
+  const [rkPool, setRkPool] = useState(null)
 
   const consumeSeed = () => {
     setSeedTracks(null)
@@ -57,7 +60,9 @@ function AppShell() {
         </nav>
       </header>
 
-      {tab === 'biblioteca' && <LibraryView onStartFromTrack={startFromTrack} />}
+      {tab === 'biblioteca' && (
+        <LibraryView onStartFromTrack={startFromTrack} rkPool={rkPool} onRkPoolChange={setRkPool} />
+      )}
       {tab === 'armar' && (
         <SetBuilder seedTracks={seedTracks} seedPool={seedPool} onSeedConsumed={consumeSeed} />
       )}

@@ -6,7 +6,7 @@ import RekordboxView from './RekordboxView'
 import TracksTable from './TracksTable'
 
 // Vista "Biblioteca" con 3 vistas: Rekordbox (default), Por género y Plana.
-export default function LibraryView({ onStartFromTrack }) {
+export default function LibraryView({ onStartFromTrack, rkPool, onRkPoolChange }) {
   const [filters, setFilters] = useState({
     quality: '',
     onlyRepresentatives: false,
@@ -53,6 +53,8 @@ export default function LibraryView({ onStartFromTrack }) {
           filters={filters}
           onStartFromTrack={onStartFromTrack}
           onShownCount={setRkCount}
+          pool={rkPool}
+          onPoolChange={onRkPoolChange}
         />
       ) : (
         <>

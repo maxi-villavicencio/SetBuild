@@ -1,7 +1,9 @@
 // Árbol de carpetas/playlists de Rekordbox. Se renderiza RECURSIVAMENTE (soporta anidamiento
 // arbitrario). Dos modos:
-//   - 'single' (default): seleccionar una playlist (vista Rekordbox).
-//   - 'multi': checkbox por nodo para armar un POOL (marcar carpeta = el backend la expande).
+//   - 'single' (default): seleccionar una playlist (no usado hoy).
+//   - 'multi': checkbox por nodo para armar un POOL. El pool son ids de PLAYLISTS (hojas); las
+//     carpetas son agregadores: tildar/destildar una carpeta cascadea a sus descendientes, y su
+//     checkbox refleja tri-estado (all=tildado, some=indeterminado, none=vacío) vía folderStateById.
 
 function TreeNode({
   node,
@@ -10,6 +12,7 @@ function TreeNode({
   selectedId,
   onSelect,
   checkedIds,
+  folderStateById,
   onToggleCheck,
   openFolders,
   onToggleFolder,
@@ -17,13 +20,22 @@ function TreeNode({
   const pad = { paddingLeft: `${8 + depth * 14}px` }
   const isFolder = node.node_type === 'folder'
   const isOpen = !isFolder || openFolders.has(node.rb_id)
+
+  // Estado del checkbox: carpeta = tri-estado derivado; playlist = tildada o no.
+  const folderState = isFolder ? folderStateById?.get(node.rb_id) : null
+  const isChecked = isFolder ? folderState === 'all' : checkedIds?.has(node.rb_id) || false
+  const isIndeterminate = isFolder && folderState === 'some'
+
   const checkbox =
     mode === 'multi' ? (
       <input
         type="checkbox"
         className="tree-check"
-        checked={checkedIds?.has(node.rb_id) || false}
-        onChange={() => onToggleCheck(node.rb_id)}
+        checked={isChecked}
+        ref={(el) => {
+          if (el) el.indeterminate = isIndeterminate
+        }}
+        onChange={() => onToggleCheck(node)}
         onClick={(e) => e.stopPropagation()}
       />
     ) : null
@@ -46,6 +58,7 @@ function TreeNode({
             selectedId={selectedId}
             onSelect={onSelect}
             checkedIds={checkedIds}
+            folderStateById={folderStateById}
             onToggleCheck={onToggleCheck}
             openFolders={openFolders}
             onToggleFolder={onToggleFolder}
@@ -62,7 +75,7 @@ function TreeNode({
         {checkbox}
         <button
           className={`tree-playlist${!checkbox && selectedId === node.rb_id ? ' selected' : ''}`}
-          onClick={() => (mode === 'multi' ? onToggleCheck(node.rb_id) : onSelect(node))}
+          onClick={() => (mode === 'multi' ? onToggleCheck(node) : onSelect(node))}
         >
           <span className="tree-name">{node.name || '(sin nombre)'}</span>
           <span className="tree-count">{node.track_count}</span>
@@ -79,6 +92,7 @@ export default function PlaylistTree({
   selectedId,
   onSelect,
   checkedIds,
+  folderStateById,
   onToggleCheck,
   openFolders,
   onToggleFolder,
@@ -94,6 +108,7 @@ export default function PlaylistTree({
           selectedId={selectedId}
           onSelect={onSelect}
           checkedIds={checkedIds}
+          folderStateById={folderStateById}
           onToggleCheck={onToggleCheck}
           openFolders={openFolders}
           onToggleFolder={onToggleFolder}
