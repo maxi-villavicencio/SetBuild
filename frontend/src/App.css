@@ -106,13 +106,15 @@ table {
   table-layout: fixed;
 }
 
-/* Anchos de columnas (con table-layout: fixed los toma del thead). Título y artista quedan
-   elásticos (sin ancho) y reparten el espacio sobrante, truncando con ellipsis. */
-.c-bpm { width: 56px; }
-.c-cam { width: 62px; }
-.c-energy { width: 96px; }
-.c-qual { width: 84px; }
-.c-genre { width: 108px; }
+/* Anchos de columnas (con table-layout: fixed los toma del thead), dimensionados para que su
+   contenido (ej. el número de BPM "128.0", la energía con su barra) SIEMPRE se vea. Título y
+   artista quedan elásticos (sin ancho): reparten el sobrante y truncan con ellipsis; se achican
+   primero cuando falta lugar, así las columnas de datos y el botón nunca se cortan. */
+.c-bpm { width: 72px; }
+.c-cam { width: 64px; }
+.c-energy { width: 108px; }
+.c-qual { width: 92px; }
+.c-genre { width: 100px; }
 
 thead th {
   position: sticky;
@@ -377,7 +379,7 @@ tbody tr:last-child td { border-bottom: none; }
 .no-res { padding: 8px; }
 
 /* --- Acción "Armar set" por fila (Biblioteca) --- */
-.action-col { width: 112px; white-space: nowrap; text-align: right; cursor: default; }
+.action-col { width: 108px; white-space: nowrap; text-align: right; cursor: default; }
 thead th.action-col { cursor: default; }
 .row-action {
   background: var(--panel-2);
