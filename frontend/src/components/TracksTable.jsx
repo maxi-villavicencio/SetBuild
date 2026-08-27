@@ -4,13 +4,13 @@ import { sortTracks, useTableSort } from '../lib/tableSort'
 
 // Columnas de la tabla. `num` marca las numéricas (orden numérico + alineadas a la derecha).
 const COLUMNS = [
-  { key: 'title', label: 'Título' },
-  { key: 'artist', label: 'Artista' },
-  { key: 'bpm', label: 'BPM', num: true },
-  { key: 'camelot', label: 'Camelot' },
-  { key: 'energy_score', label: 'Energía', num: true },
-  { key: 'quality', label: 'Calidad' },
-  { key: 'genre_canonical', label: 'Género' },
+  { key: 'title', label: 'Título', cls: 'c-title' },
+  { key: 'artist', label: 'Artista', cls: 'c-artist' },
+  { key: 'bpm', label: 'BPM', num: true, cls: 'c-bpm' },
+  { key: 'camelot', label: 'Camelot', cls: 'c-cam' },
+  { key: 'energy_score', label: 'Energía', num: true, cls: 'c-energy' },
+  { key: 'quality', label: 'Calidad', cls: 'c-qual' },
+  { key: 'genre_canonical', label: 'Género', cls: 'c-genre' },
 ]
 
 // defaultSort: orden inicial. Por defecto energía↓ (vista plana). La vista Rekordbox pasa
@@ -28,7 +28,7 @@ export default function TracksTable({ tracks, onStartFromTrack, defaultSort, sto
             {COLUMNS.map((c) => (
               <th
                 key={c.key}
-                className={c.num ? 'num' : undefined}
+                className={[c.num && 'num', c.cls].filter(Boolean).join(' ') || undefined}
                 onClick={() => onSort(c.key)}
                 title="Ordenar"
               >

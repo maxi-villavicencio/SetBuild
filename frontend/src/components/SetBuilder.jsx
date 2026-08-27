@@ -3,7 +3,6 @@ import { createSet, getNextCandidates, getPoolSize, getTracks } from '../api'
 import CandidateList from './CandidateList'
 import SetTimeline from './SetTimeline'
 
-const LIMIT = 8
 const DELTA = 1.5 // cuánto sube/baja la energía objetivo al pedir "más movido/tranqui"
 const clamp = (v) => Math.max(1, Math.min(10, v))
 
@@ -95,9 +94,9 @@ export default function SetBuilder({
     setCandStatus('loading')
     setCandError(null)
     try {
+      // sin limit: el backend devuelve TODOS los candidatos compatibles.
       const data = await getNextCandidates({
         trackId: last.track_id,
-        limit: LIMIT,
         targetEnergy: targetEnergy(),
         mode,
         playlistIds: poolIds,

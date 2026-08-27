@@ -73,12 +73,16 @@ def list_tracks(
         None, description="Filtra por coleccion derivada de la carpeta"),
     only_representatives: bool = Query(
         False, description="Un solo track por grupo de duplicados (sin repetir tema)"),
+    playlist_ids: Optional[List[int]] = Query(
+        None, description="Acota a los tracks de esas playlists/carpetas (union, carpetas "
+                          "expandidas). Deduplica: un track en varias playlists aparece una vez."),
 ):
     """Lista la biblioteca. Los filtros son opcionales y se combinan."""
     return get_tracks(
         quality=quality,
         collection=collection,
         only_representatives=only_representatives,
+        playlist_ids=playlist_ids,
     )
 
 
@@ -99,7 +103,8 @@ class Candidate(BaseModel):
 @app.get("/next-candidates", response_model=List[Candidate])
 def next_candidates(
     track_id: int = Query(..., description="track_id del track actual"),
-    limit: int = Query(6, ge=1, le=50, description="Cuantos candidatos devolver"),
+    limit: Optional[int] = Query(
+        None, ge=1, description="Tope de candidatos; por defecto (None) devuelve TODOS los compatibles"),
     target_energy: Optional[float] = Query(
         None, ge=1, le=10,
         description="Energia objetivo (1..10); por defecto la del track actual "
@@ -126,7 +131,9 @@ def next_candidates(
     if result is None:
         raise HTTPException(status_code=404, detail=f"No existe el track_id {track_id}")
     # Adelanta en segundo plano la conversion de los candidatos AIFF (no bloquea la respuesta).
-    warm_bg([c["track_id"] for c in result["candidates"]])
+    # Se acota a los primeros (los mas probables de elegir) para no disparar una tormenta de
+    # transcodificaciones cuando la lista es larga (sin limite puede traer 100+).
+    warm_bg([c["track_id"] for c in result["candidates"][:12]])
     return result["candidates"]
 
 

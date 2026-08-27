@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getPlaylists, getPlaylistTracks, getPoolSize } from '../api'
+import { getPlaylists, getPoolSize, getTracks } from '../api'
 import PlaylistTree from './PlaylistTree'
 import TracksTable from './TracksTable'
 
@@ -23,6 +23,15 @@ function collectPlaylistIds(nodes, acc = []) {
   return acc
 }
 
+// rb_id -> nombre (para el label del pool).
+function nameMap(nodes, acc = new Map()) {
+  for (const n of nodes) {
+    acc.set(n.rb_id, n.name || '(sin nombre)')
+    if (n.children) nameMap(n.children, acc)
+  }
+  return acc
+}
+
 // Ids de las playlists (hojas) que cuelgan de un nodo (para el tildado en cascada de carpetas).
 function leafIdsOf(node, acc = []) {
   if (node.node_type === 'folder') {
@@ -31,15 +40,6 @@ function leafIdsOf(node, acc = []) {
     acc.push(node.rb_id)
   }
   return acc
-}
-
-// Playlists tildadas, en orden del árbol (para mostrar y para los nombres del pool).
-function collectCheckedPlaylists(nodes, checkedIds, out = []) {
-  for (const n of nodes) {
-    if (n.node_type === 'folder') collectCheckedPlaylists(n.children || [], checkedIds, out)
-    else if (checkedIds.has(n.rb_id)) out.push(n)
-  }
-  return out
 }
 
 // Tri-estado de cada carpeta según cuántas de sus hojas están tildadas: all | some | none.
@@ -60,8 +60,8 @@ function buildFolderStates(nodes, checkedIds, map = new Map()) {
   return [total, checked]
 }
 
-// Vista "Rekordbox": árbol colapsable con selección múltiple (pool) y carga DIFERIDA de tracks.
-// La selección (pool) vive en App (props pool/onPoolChange) para persistir entre vistas/pestañas.
+// Vista "Rekordbox": árbol colapsable con selección múltiple (pool). Los tracks del pool se muestran
+// en UNA sola lista unificada y deduplicada (no por secciones). La selección persiste en App.
 export default function RekordboxView({ filters, onStartFromTrack, onShownCount, pool, onPoolChange }) {
   const [tree, setTree] = useState([])
   const [treeStatus, setTreeStatus] = useState('loading') // loading|ok|error
@@ -70,8 +70,9 @@ export default function RekordboxView({ filters, onStartFromTrack, onShownCount,
   const [treeOpen, setTreeOpen] = useState(false) // panel de playlists colapsado al inicio
 
   const [poolCount, setPoolCount] = useState(null) // tracks distintos en la unión (GET /pool)
-  const [sections, setSections] = useState({}) // rb_id -> { status, tracks, error } (cache en memoria)
-  const [openSections, setOpenSections] = useState(() => new Set()) // secciones expandidas (vacío = plegadas)
+  const [tracks, setTracks] = useState([]) // lista unificada del pool
+  const [trStatus, setTrStatus] = useState('idle') // idle|loading|ok|error
+  const [trError, setTrError] = useState(null)
 
   const poolIds = useMemo(() => pool || [], [pool])
 
@@ -81,7 +82,7 @@ export default function RekordboxView({ filters, onStartFromTrack, onShownCount,
     try {
       const data = await getPlaylists()
       setTree(data)
-      setOpenFolders(collectFolderIds(data)) // carpetas abiertas por defecto en el árbol
+      setOpenFolders(collectFolderIds(data))
       setTreeStatus('ok')
     } catch (e) {
       setTreeError(e.message || 'No se pudo conectar con el backend')
@@ -101,12 +102,9 @@ export default function RekordboxView({ filters, onStartFromTrack, onShownCount,
     }
   }, [pool, treeStatus, tree, onPoolChange])
 
+  const nameById = useMemo(() => nameMap(tree), [tree])
   const allPlaylistIds = useMemo(() => collectPlaylistIds(tree), [tree])
   const checkedIds = useMemo(() => new Set(poolIds), [poolIds])
-  const displayPlaylists = useMemo(
-    () => collectCheckedPlaylists(tree, checkedIds),
-    [tree, checkedIds],
-  )
   const folderStateById = useMemo(() => {
     const map = new Map()
     buildFolderStates(tree, checkedIds, map)
@@ -118,7 +116,6 @@ export default function RekordboxView({ filters, onStartFromTrack, onShownCount,
     checkedIds.size === allPlaylistIds.length &&
     allPlaylistIds.every((id) => checkedIds.has(id))
 
-  // Tildar/destildar un nodo: playlist = su id; carpeta = cascada a todas sus hojas.
   const toggleCheck = useCallback(
     (node) => {
       const ids = leafIdsOf(node)
@@ -134,12 +131,6 @@ export default function RekordboxView({ filters, onStartFromTrack, onShownCount,
 
   const toggleFolder = (rbId) =>
     setOpenFolders((prev) => {
-      const next = new Set(prev)
-      next.has(rbId) ? next.delete(rbId) : next.add(rbId)
-      return next
-    })
-  const toggleSection = (rbId) =>
-    setOpenSections((prev) => {
       const next = new Set(prev)
       next.has(rbId) ? next.delete(rbId) : next.add(rbId)
       return next
@@ -160,55 +151,58 @@ export default function RekordboxView({ filters, onStartFromTrack, onShownCount,
     }
   }, [poolIds])
 
-  // Carga DIFERIDA: pide los tracks de una sección recién cuando se abre, y los cachea.
+  // Lista unificada de tracks del pool (deduplicada: representantes de la unión de playlists).
   useEffect(() => {
-    const toLoad = [...openSections].filter((id) => !sections[id])
-    if (toLoad.length === 0) return
+    if (!poolIds.length) {
+      setTracks([])
+      setTrStatus('idle')
+      return
+    }
     let alive = true
-    setSections((prev) => {
-      const next = { ...prev }
-      for (const id of toLoad) next[id] = { status: 'loading', tracks: [], error: null }
-      return next
-    })
-    toLoad.forEach(async (id) => {
-      try {
-        const data = await getPlaylistTracks(id)
-        if (alive) setSections((prev) => ({ ...prev, [id]: { status: 'ok', tracks: data, error: null } }))
-      } catch (e) {
-        if (alive)
-          setSections((prev) => ({
-            ...prev,
-            [id]: { status: 'error', tracks: [], error: e.message || 'error' },
-          }))
-      }
-    })
+    setTrStatus('loading')
+    setTrError(null)
+    getTracks({ onlyRepresentatives: true, playlistIds: poolIds })
+      .then((data) => {
+        if (!alive) return
+        setTracks(data)
+        setTrStatus('ok')
+      })
+      .catch((e) => {
+        if (!alive) return
+        setTrError(e.message || 'No se pudo conectar con el backend')
+        setTrStatus('error')
+      })
     return () => {
       alive = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openSections])
+  }, [poolIds])
 
-  // El contador de la barra superior muestra el tamaño del pool (distintos).
+  const shown = useMemo(
+    () => (filters.quality ? tracks.filter((t) => t.quality === filters.quality) : tracks),
+    [tracks, filters.quality],
+  )
+
+  // El contador de la barra superior muestra lo que se está viendo en la tabla.
   useEffect(() => {
-    onShownCount?.(poolCount || 0)
-  }, [poolCount, onShownCount])
+    onShownCount?.(trStatus === 'ok' ? shown.length : 0)
+  }, [shown, trStatus, onShownCount])
 
   // "Armar set desde acá" lleva el track + el pool activo. Si es toda la biblioteca (o vacío), sin pool.
   const startFromTrack = useCallback(
     (track) => {
       if (poolIds.length && !isWhole) {
-        const names = displayPlaylists.map((p) => p.name || '(sin nombre)')
+        const names = poolIds.map((id) => nameById.get(id) || String(id))
         onStartFromTrack(track, { ids: poolIds, names })
       } else {
         onStartFromTrack(track, null)
       }
     },
-    [onStartFromTrack, poolIds, isWhole, displayPlaylists],
+    [onStartFromTrack, poolIds, isWhole, nameById],
   )
 
   const poolLabel = isWhole
     ? 'toda la biblioteca'
-    : displayPlaylists.map((p) => p.name || '(sin nombre)').join(', ')
+    : poolIds.map((id) => nameById.get(id) || id).join(', ')
   const poolCountText = poolCount != null ? `${poolCount} tracks` : poolIds.length ? '…' : '0 tracks'
 
   return (
@@ -258,50 +252,20 @@ export default function RekordboxView({ filters, onStartFromTrack, onShownCount,
             <div className="state dim">
               No hay playlists en el pool. Abrí “Playlists” y tildá al menos una.
             </div>
-          ) : displayPlaylists.length === 0 ? (
-            <div className="state dim">La selección no tiene playlists con tracks (¿carpeta vacía?).</div>
+          ) : trStatus === 'loading' ? (
+            <div className="state">Cargando tracks del pool…</div>
+          ) : trStatus === 'error' ? (
+            <div className="state error">
+              <p>No se pudieron cargar los tracks: {trError}.</p>
+            </div>
+          ) : shown.length === 0 ? (
+            <div className="state dim">
+              {tracks.length === 0
+                ? 'El pool no tiene tracks.'
+                : 'Ningún track del pool coincide con los filtros.'}
+            </div>
           ) : (
-            displayPlaylists.map((pl) => {
-              const sec = sections[pl.rb_id]
-              const isOpen = openSections.has(pl.rb_id)
-              const all = sec?.tracks || []
-              const shown = filters.quality ? all.filter((t) => t.quality === filters.quality) : all
-              return (
-                <section className="genre-folder" key={pl.rb_id}>
-                  <button
-                    className="folder-head"
-                    onClick={() => toggleSection(pl.rb_id)}
-                    aria-expanded={isOpen}
-                  >
-                    <span className="chevron">{isOpen ? '▾' : '▸'}</span>
-                    <span className="folder-name">{pl.name || '(sin nombre)'}</span>
-                    <span className="folder-count">{pl.track_count}</span>
-                  </button>
-                  {isOpen &&
-                    (!sec || sec.status === 'loading' ? (
-                      <div className="state">Cargando tracks…</div>
-                    ) : sec.status === 'error' ? (
-                      <div className="state error">
-                        <p>No se pudieron cargar los tracks: {sec.error}.</p>
-                      </div>
-                    ) : shown.length === 0 ? (
-                      <div className="state dim">
-                        {all.length === 0
-                          ? 'Esta playlist está vacía (o sus tracks no están en la biblioteca).'
-                          : 'Ningún track coincide con los filtros.'}
-                      </div>
-                    ) : (
-                      // defaultSort null = orden original de la playlist (Rekordbox).
-                      <TracksTable
-                        key={pl.rb_id}
-                        tracks={shown}
-                        onStartFromTrack={startFromTrack}
-                        defaultSort={{ key: null, dir: 'asc' }}
-                      />
-                    ))}
-                </section>
-              )
-            })
+            <TracksTable tracks={shown} onStartFromTrack={startFromTrack} />
           )}
         </section>
       </div>

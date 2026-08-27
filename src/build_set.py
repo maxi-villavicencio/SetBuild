@@ -242,8 +242,10 @@ def _energy_reason(cand_e, target):
     return abs(diff), ("mas movido" if diff > 0 else "mas tranqui")
 
 
-def next_candidates(current, pool, target_energy=None, limit=6, genre_filter=True):
+def next_candidates(current, pool, target_energy=None, limit=None, genre_filter=True):
     """Dado un track actual, devuelve los mejores candidatos del pool (dicts estilo library).
+
+    limit: None (default) = TODOS los compatibles, ordenados; un entero recorta a ese tope.
 
     Filtros duros: BPM +/-2 y Camelot compatible (misma/+-1/relativo/+7, reusa camelot.py con
     el energy boost SIEMPRE habilitado en el sugeridor). Ranking:
@@ -298,13 +300,16 @@ def next_candidates(current, pool, target_energy=None, limit=6, genre_filter=Tru
         scored.append(((g_sort, incompleto, e_level, boost_flag, e_dist, bpm_dist), cand))
 
     scored.sort(key=lambda x: x[0])
-    return [cand for _, cand in scored[:limit]]
+    ordered = [cand for _, cand in scored]
+    return ordered if limit is None else ordered[:limit]
 
 
-def suggest_next(track_id, limit=6, target_energy=None, mode="realista",
+def suggest_next(track_id, limit=None, target_energy=None, mode="realista",
                  quality=None, collection=None, playlist_ids=None):
     """Orquesta el sugeridor: trae el track actual y el pool (representantes, filtrado por modo y,
-    si se pasa, por playlists) y devuelve {"current", "candidates"}. None si el track_id no existe."""
+    si se pasa, por playlists) y devuelve {"current", "candidates"}. None si el track_id no existe.
+
+    limit: None (default) = todos los candidatos compatibles; un entero recorta a ese tope."""
     current = get_track(track_id)
     if current is None:
         return None

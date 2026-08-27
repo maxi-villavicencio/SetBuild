@@ -48,7 +48,11 @@ export default function CandidateList({ status, error, candidates, onPick, onRet
   }
 
   return (
-    <ul className="candidates">
+    <>
+      <div className="cand-count dim">
+        {candidates.length} {candidates.length === 1 ? 'candidato' : 'candidatos'}
+      </div>
+      <ul className="candidates">
       {candidates.map((c, i) => (
         <li key={c.track_id} className="cand-row">
           <PlayButton track={c} queue={candidates} index={i} />
@@ -70,6 +74,7 @@ export default function CandidateList({ status, error, candidates, onPick, onRet
           </button>
         </li>
       ))}
-    </ul>
+      </ul>
+    </>
   )
 }

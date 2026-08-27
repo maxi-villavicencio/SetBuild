@@ -6,12 +6,12 @@ const UNCLASSIFIED = 'sin clasificar'
 
 // Columnas de la tabla dentro de cada carpeta (sin "Género", implícito en la carpeta).
 const GROUPED_COLUMNS = [
-  { key: 'title', label: 'Título' },
-  { key: 'artist', label: 'Artista' },
-  { key: 'bpm', label: 'BPM', num: true },
-  { key: 'camelot', label: 'Camelot' },
-  { key: 'energy_score', label: 'Energía', num: true },
-  { key: 'quality', label: 'Calidad' },
+  { key: 'title', label: 'Título', cls: 'c-title' },
+  { key: 'artist', label: 'Artista', cls: 'c-artist' },
+  { key: 'bpm', label: 'BPM', num: true, cls: 'c-bpm' },
+  { key: 'camelot', label: 'Camelot', cls: 'c-cam' },
+  { key: 'energy_score', label: 'Energía', num: true, cls: 'c-energy' },
+  { key: 'quality', label: 'Calidad', cls: 'c-qual' },
 ]
 
 function TrackRow({ t, queue, index, onStartFromTrack }) {
@@ -75,7 +75,7 @@ function GenreFolder({ genre, items, isOpen, onToggle, onStartFromTrack }) {
                 {GROUPED_COLUMNS.map((c) => (
                   <th
                     key={c.key}
-                    className={c.num ? 'num' : undefined}
+                    className={[c.num && 'num', c.cls].filter(Boolean).join(' ') || undefined}
                     onClick={() => onSort(c.key)}
                     title="Ordenar"
                   >

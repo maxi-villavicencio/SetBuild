@@ -109,7 +109,8 @@ def main():
 
     p_n = sub.add_parser("next", help="Sugiere los mejores candidatos para el siguiente track")
     p_n.add_argument("--track", type=int, required=True, help="track_id actual")
-    p_n.add_argument("--limit", type=int, default=6)
+    p_n.add_argument("--limit", type=int, default=None,
+                     help="Tope de candidatos; por defecto TODOS los compatibles")
     p_n.add_argument("--target-energy", type=float, default=None,
                      help="Energia objetivo (1..10); por defecto la del track actual")
     p_n.add_argument("--mode", choices=["limpio", "realista"], default="realista")

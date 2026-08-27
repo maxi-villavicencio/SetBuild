@@ -4,12 +4,13 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 // Trae la biblioteca aplicando los filtros que soporta el endpoint.
-// filters: { quality, collection, onlyRepresentatives }
-export async function getTracks({ quality, collection, onlyRepresentatives } = {}) {
+// filters: { quality, collection, onlyRepresentatives, playlistIds }
+export async function getTracks({ quality, collection, onlyRepresentatives, playlistIds } = {}) {
   const params = new URLSearchParams()
   if (quality) params.set('quality', quality)
   if (collection) params.set('collection', collection)
   if (onlyRepresentatives) params.set('only_representatives', 'true')
+  for (const id of playlistIds || []) params.append('playlist_ids', String(id))
 
   const qs = params.toString()
   const res = await fetch(`${API_URL}/tracks${qs ? `?${qs}` : ''}`)

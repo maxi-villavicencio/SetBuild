@@ -101,7 +101,18 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  /* fixed: las columnas de datos y el botón conservan su ancho SIEMPRE; título/artista se
+     achican y truncan con "…" cuando falta lugar (ej. con el árbol de Rekordbox abierto). */
+  table-layout: fixed;
 }
+
+/* Anchos de columnas (con table-layout: fixed los toma del thead). Título y artista quedan
+   elásticos (sin ancho) y reparten el espacio sobrante, truncando con ellipsis. */
+.c-bpm { width: 56px; }
+.c-cam { width: 62px; }
+.c-energy { width: 96px; }
+.c-qual { width: 84px; }
+.c-genre { width: 108px; }
 
 thead th {
   position: sticky;
@@ -297,7 +308,18 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 /* --- Candidatos --- */
-.candidates { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cand-count { font-size: 12px; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+/* Sin límite de candidatos: la lista puede ser larga -> scroll interno para no romper el layout. */
+.candidates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
 .cand, .start-row {
   width: 100%;
   display: grid;
@@ -355,7 +377,7 @@ tbody tr:last-child td { border-bottom: none; }
 .no-res { padding: 8px; }
 
 /* --- Acción "Armar set" por fila (Biblioteca) --- */
-.action-col { width: 1%; white-space: nowrap; text-align: right; cursor: default; }
+.action-col { width: 112px; white-space: nowrap; text-align: right; cursor: default; }
 thead th.action-col { cursor: default; }
 .row-action {
   background: var(--panel-2);
@@ -576,7 +598,7 @@ thead th.action-col { cursor: default; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.play-col { width: 1%; text-align: center; padding-left: 10px; padding-right: 4px; cursor: default; }
+.play-col { width: 40px; text-align: center; padding-left: 10px; padding-right: 4px; cursor: default; }
 thead th.play-col { cursor: default; }
 
 /* candidato: play (izq) + fila clickeable (der) */
