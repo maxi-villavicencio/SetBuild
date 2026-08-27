@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { isSort, usePersistentState } from './persist'
 
 // Lógica de ordenamiento compartida entre la vista plana (TracksTable) y las carpetas de
 // género (GroupedView), para que se comporte idéntico y no se desincronice.
@@ -24,9 +24,11 @@ export function sortTracks(rows, sort, columns) {
 }
 
 // Estado de orden con toggle asc/desc. Una columna nueva arranca en 'asc'; volver a clickearla
-// alterna la dirección.
-export function useTableSort(defaultSort) {
-  const [sort, setSort] = useState(defaultSort)
+// alterna la dirección. Con `storageKey` (opcional), el orden persiste en localStorage (ej. la
+// vista Plana); sin él, es local a la sesión (ej. cada carpeta/playlist con su propio orden).
+export function useTableSort(defaultSort, storageKey) {
+  const [sort, setSort] = usePersistentState(
+    storageKey ? `sort.${storageKey}` : null, defaultSort, isSort)
   const onSort = (key) =>
     setSort((s) =>
       s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },

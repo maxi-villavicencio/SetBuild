@@ -7,18 +7,30 @@ const LIMIT = 8
 const DELTA = 1.5 // cuánto sube/baja la energía objetivo al pedir "más movido/tranqui"
 const clamp = (v) => Math.max(1, Math.min(10, v))
 
-export default function SetBuilder({ seedTracks = null, seedPool = null, onSeedConsumed }) {
+// El set en construcción, la energía, el modo y el pool son CONTROLADOS por App (persisten al
+// navegar y al F5). Lo efímero (biblioteca del buscador, candidatos, guardado) queda local.
+export default function SetBuilder({
+  set,
+  onSetChange,
+  energyDir,
+  onEnergyDirChange,
+  mode,
+  onModeChange,
+  pool,
+  onPoolChange,
+}) {
+  const setSet = onSetChange
+  const setEnergyDir = onEnergyDirChange
+  const setMode = onModeChange
+
   // Biblioteca (representantes) para elegir el track de arranque.
   const [allTracks, setAllTracks] = useState([])
   const [libStatus, setLibStatus] = useState('loading')
   const [query, setQuery] = useState('')
 
-  // Set en construcción y candidatos. Si venimos con semilla (Biblioteca o set guardado), arrancamos con esos tracks.
-  const [set, setSet] = useState(() => (seedTracks && seedTracks.length ? [...seedTracks] : []))
-  const [energyDir, setEnergyDir] = useState('similar') // 'similar' | 'mas' | 'menos'
-  // Pool de armado (playlists/carpetas); [] = toda la biblioteca. Viene de la vista Rekordbox por semilla.
-  const [poolIds, setPoolIds] = useState(() => (seedPool?.ids ? [...seedPool.ids] : []))
-  const [poolNames, setPoolNames] = useState(() => (seedPool?.names ? [...seedPool.names] : []))
+  // Pool de armado (playlists/carpetas); [] = toda la biblioteca. Viene de la vista Rekordbox.
+  const poolIds = useMemo(() => pool?.ids || [], [pool])
+  const poolNames = pool?.names || []
   const [poolCount, setPoolCount] = useState(null)
 
   // Guardado del set.
@@ -27,12 +39,6 @@ export default function SetBuilder({ seedTracks = null, seedPool = null, onSeedC
   const [saveStatus, setSaveStatus] = useState('idle') // idle|saving|ok|error
   const [saveError, setSaveError] = useState(null)
 
-  // Consumir la semilla al montar (para que una navegación manual posterior no la reuse).
-  useEffect(() => {
-    if (seedTracks && seedTracks.length) onSeedConsumed?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  const [mode, setMode] = useState('realista')
   const [candidates, setCandidates] = useState([])
   const [candStatus, setCandStatus] = useState('idle') // idle|loading|ok|error
   const [candError, setCandError] = useState(null)
@@ -56,10 +62,7 @@ export default function SetBuilder({ seedTracks = null, seedPool = null, onSeedC
   }, [poolIds])
 
   // Limpiar el pool sin salir de Armar set: vuelve a toda la biblioteca.
-  const clearPool = () => {
-    setPoolIds([])
-    setPoolNames([])
-  }
+  const clearPool = () => onPoolChange(null)
 
   // Cargar la biblioteca una vez para el buscador de arranque.
   const loadLibrary = useCallback(async () => {

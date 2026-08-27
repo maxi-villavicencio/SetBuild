@@ -1,9 +1,16 @@
-import { useState } from 'react'
 import LibraryView from './components/LibraryView'
 import MySets from './components/MySets'
 import PlayerBar from './components/PlayerBar'
 import SetBuilder from './components/SetBuilder'
 import { AudioProvider, useAudio } from './lib/audioPlayer'
+import {
+  isFilters,
+  isNumberArrayOrNull,
+  isOneOf,
+  isPoolOrNull,
+  isTrackArray,
+  usePersistentState,
+} from './lib/persist'
 import './App.css'
 
 const TABS = [
@@ -16,30 +23,39 @@ const TABS = [
 // reservar espacio abajo (has-player) y renderizar la barra fija.
 function AppShell() {
   const { current } = useAudio()
-  const [tab, setTab] = useState('biblioteca')
-  // Semilla para arrancar/abrir un set en "Armar set" (se consume al montar SetBuilder).
-  const [seedTracks, setSeedTracks] = useState(null)
-  // Pool activo que viene de la vista Rekordbox: { ids, names } | null.
-  const [seedPool, setSeedPool] = useState(null)
-  // Selección del pool de la vista Rekordbox (ids de playlists tildadas). Vive acá para PERSISTIR
-  // al cambiar de pestaña/vista (RekordboxView se desmonta). null = todavía sin inicializar.
-  const [rkPool, setRkPool] = useState(null)
+  // Todo el estado que el usuario no quiere perder vive acá (dueño único) y persiste en
+  // localStorage: sobrevive al cambio de solapa/vista (los componentes se desmontan) y al F5.
+  const [tab, setTab] = usePersistentState('tab', 'biblioteca', isOneOf(['biblioteca', 'armar', 'sets']))
 
-  const consumeSeed = () => {
-    setSeedTracks(null)
-    setSeedPool(null)
-  }
+  // Estado de "Armar set": el set en construcción, la energía objetivo, el modo y el pool activo.
+  const [builderSet, setBuilderSet] = usePersistentState('builderSet', [], isTrackArray)
+  const [builderEnergyDir, setBuilderEnergyDir] = usePersistentState(
+    'builderEnergyDir', 'similar', isOneOf(['similar', 'mas', 'menos']))
+  const [builderMode, setBuilderMode] = usePersistentState(
+    'builderMode', 'realista', isOneOf(['realista', 'limpio']))
+  const [builderPool, setBuilderPool] = usePersistentState('builderPool', null, isPoolOrNull)
 
-  // Desde la Biblioteca: arrancar un set con un track (y, si viene de Rekordbox, con su pool).
+  // Selección del pool de la vista Rekordbox (ids de playlists tildadas). null = sin inicializar.
+  const [rkPool, setRkPool] = usePersistentState('rkPool', null, isNumberArrayOrNull)
+
+  // Filtros y vista activa de la Biblioteca.
+  const [libFilters, setLibFilters] = usePersistentState(
+    'libFilters', { quality: '', onlyRepresentatives: false }, isFilters)
+  const [libView, setLibView] = usePersistentState(
+    'libView', 'rekordbox', isOneOf(['rekordbox', 'agrupada', 'plana']))
+
+  // Desde la Biblioteca: arrancar un set NUEVO con un track (y, si viene de Rekordbox, con su pool).
   const startFromTrack = (track, pool = null) => {
-    setSeedTracks([track])
-    setSeedPool(pool)
+    setBuilderSet([track])
+    setBuilderPool(pool)
+    setBuilderEnergyDir('similar')
     setTab('armar')
   }
   // Desde "Mis sets": abrir un set guardado (tracks en orden), sin pool.
   const openSet = (tracks) => {
-    setSeedTracks(tracks)
-    setSeedPool(null)
+    setBuilderSet(tracks)
+    setBuilderPool(null)
+    setBuilderEnergyDir('similar')
     setTab('armar')
   }
 
@@ -61,10 +77,27 @@ function AppShell() {
       </header>
 
       {tab === 'biblioteca' && (
-        <LibraryView onStartFromTrack={startFromTrack} rkPool={rkPool} onRkPoolChange={setRkPool} />
+        <LibraryView
+          onStartFromTrack={startFromTrack}
+          filters={libFilters}
+          onFiltersChange={setLibFilters}
+          view={libView}
+          onViewChange={setLibView}
+          rkPool={rkPool}
+          onRkPoolChange={setRkPool}
+        />
       )}
       {tab === 'armar' && (
-        <SetBuilder seedTracks={seedTracks} seedPool={seedPool} onSeedConsumed={consumeSeed} />
+        <SetBuilder
+          set={builderSet}
+          onSetChange={setBuilderSet}
+          energyDir={builderEnergyDir}
+          onEnergyDirChange={setBuilderEnergyDir}
+          mode={builderMode}
+          onModeChange={setBuilderMode}
+          pool={builderPool}
+          onPoolChange={setBuilderPool}
+        />
       )}
       {tab === 'sets' && <MySets onOpenSet={openSet} />}
 

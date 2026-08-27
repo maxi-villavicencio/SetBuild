@@ -6,12 +6,18 @@ import RekordboxView from './RekordboxView'
 import TracksTable from './TracksTable'
 
 // Vista "Biblioteca" con 3 vistas: Rekordbox (default), Por género y Plana.
-export default function LibraryView({ onStartFromTrack, rkPool, onRkPoolChange }) {
-  const [filters, setFilters] = useState({
-    quality: '',
-    onlyRepresentatives: false,
-  })
-  const [view, setView] = useState('rekordbox') // default: organizada como en Rekordbox
+// filtros y vista vienen de App (persistidos); los tracks/estados de carga son locales.
+export default function LibraryView({
+  onStartFromTrack,
+  filters,
+  onFiltersChange,
+  view,
+  onViewChange,
+  rkPool,
+  onRkPoolChange,
+}) {
+  const setFilters = onFiltersChange
+  const setView = onViewChange
   const [tracks, setTracks] = useState([])
   const [status, setStatus] = useState('loading') // 'loading' | 'ok' | 'error'
   const [error, setError] = useState(null)
@@ -72,7 +78,7 @@ export default function LibraryView({ onStartFromTrack, rkPool, onRkPoolChange }
             (tracks.length === 0 ? (
               <div className="state">No hay tracks para estos filtros.</div>
             ) : view === 'plana' ? (
-              <TracksTable tracks={tracks} onStartFromTrack={onStartFromTrack} />
+              <TracksTable tracks={tracks} onStartFromTrack={onStartFromTrack} storageKey="plana" />
             ) : (
               <GroupedView tracks={tracks} onStartFromTrack={onStartFromTrack} />
             ))}
