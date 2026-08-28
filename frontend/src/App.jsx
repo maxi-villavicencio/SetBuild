@@ -27,10 +27,8 @@ function AppShell() {
   // localStorage: sobrevive al cambio de solapa/vista (los componentes se desmontan) y al F5.
   const [tab, setTab] = usePersistentState('tab', 'biblioteca', isOneOf(['biblioteca', 'armar', 'sets']))
 
-  // Estado de "Armar set": el set en construcción, la energía objetivo, el modo y el pool activo.
+  // Estado de "Armar set": el set en construcción, el modo y el pool activo.
   const [builderSet, setBuilderSet] = usePersistentState('builderSet', [], isTrackArray)
-  const [builderEnergyDir, setBuilderEnergyDir] = usePersistentState(
-    'builderEnergyDir', 'similar', isOneOf(['similar', 'mas', 'menos']))
   const [builderMode, setBuilderMode] = usePersistentState(
     'builderMode', 'realista', isOneOf(['realista', 'limpio']))
   const [builderPool, setBuilderPool] = usePersistentState('builderPool', null, isPoolOrNull)
@@ -48,14 +46,12 @@ function AppShell() {
   const startFromTrack = (track, pool = null) => {
     setBuilderSet([track])
     setBuilderPool(pool)
-    setBuilderEnergyDir('similar')
     setTab('armar')
   }
   // Desde "Mis sets": abrir un set guardado (tracks en orden), sin pool.
   const openSet = (tracks) => {
     setBuilderSet(tracks)
     setBuilderPool(null)
-    setBuilderEnergyDir('similar')
     setTab('armar')
   }
 
@@ -91,8 +87,6 @@ function AppShell() {
         <SetBuilder
           set={builderSet}
           onSetChange={setBuilderSet}
-          energyDir={builderEnergyDir}
-          onEnergyDirChange={setBuilderEnergyDir}
           mode={builderMode}
           onModeChange={setBuilderMode}
           pool={builderPool}

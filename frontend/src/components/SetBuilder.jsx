@@ -3,23 +3,10 @@ import { createSet, getNextCandidates, getPoolSize, getTracks } from '../api'
 import CandidateList from './CandidateList'
 import SetTimeline from './SetTimeline'
 
-const DELTA = 1.5 // cuánto sube/baja la energía objetivo al pedir "más movido/tranqui"
-const clamp = (v) => Math.max(1, Math.min(10, v))
-
-// El set en construcción, la energía, el modo y el pool son CONTROLADOS por App (persisten al
-// navegar y al F5). Lo efímero (biblioteca del buscador, candidatos, guardado) queda local.
-export default function SetBuilder({
-  set,
-  onSetChange,
-  energyDir,
-  onEnergyDirChange,
-  mode,
-  onModeChange,
-  pool,
-  onPoolChange,
-}) {
+// El set en construcción, el modo y el pool son CONTROLADOS por App (persisten al navegar y al F5).
+// Lo efímero (biblioteca del buscador, candidatos, guardado) queda local.
+export default function SetBuilder({ set, onSetChange, mode, onModeChange, pool, onPoolChange }) {
   const setSet = onSetChange
-  const setEnergyDir = onEnergyDirChange
   const setMode = onModeChange
 
   // Biblioteca (representantes) para elegir el track de arranque.
@@ -79,12 +66,8 @@ export default function SetBuilder({
     loadLibrary()
   }, [loadLibrary])
 
-  const targetEnergy = useCallback(() => {
-    if (energyDir === 'similar' || last?.energy_score == null) return null
-    return clamp(last.energy_score + (energyDir === 'mas' ? DELTA : -DELTA))
-  }, [energyDir, last])
-
-  // Traer candidatos para el último track cada vez que cambia el set, la energía o el modo.
+  // Candidatos para el ÚLTIMO track del set. Sin límite y sin energía objetivo: el backend ordena
+  // por cercanía de energía al track actual (suave/seguro arriba, movido/+7 abajo).
   const loadCandidates = useCallback(async () => {
     if (!last) {
       setCandidates([])
@@ -94,10 +77,8 @@ export default function SetBuilder({
     setCandStatus('loading')
     setCandError(null)
     try {
-      // sin limit: el backend devuelve TODOS los candidatos compatibles.
       const data = await getNextCandidates({
         trackId: last.track_id,
-        targetEnergy: targetEnergy(),
         mode,
         playlistIds: poolIds,
       })
@@ -108,7 +89,7 @@ export default function SetBuilder({
       setCandError(e.message || 'No se pudo conectar con el backend')
       setCandStatus('error')
     }
-  }, [last, targetEnergy, mode, setIds, poolIds])
+  }, [last, mode, setIds, poolIds])
 
   useEffect(() => {
     loadCandidates()
@@ -116,33 +97,20 @@ export default function SetBuilder({
 
   const pickStart = (track) => {
     setSet([track])
-    setEnergyDir('similar')
     setQuery('')
   }
-  const addCandidate = (track) => {
-    setSet((prev) => [...prev, track])
-    setEnergyDir('similar')
-  }
-  const undo = () => {
-    setSet((prev) => prev.slice(0, -1))
-    setEnergyDir('similar')
-  }
-  const reset = () => {
-    setSet([])
-    setEnergyDir('similar')
-  }
-  const moveUp = (i) =>
+  const addCandidate = (track) => setSet((prev) => [...prev, track])
+  const undo = () => setSet((prev) => prev.slice(0, -1))
+  const reset = () => setSet([])
+  // Quitar CUALQUIER track del set (no re-encadena; los candidatos se recalculan sobre el nuevo último).
+  const removeAt = (i) => setSet((prev) => prev.filter((_, idx) => idx !== i))
+  // Reordenar por drag & drop: mueve el track de `from` a `to`.
+  const reorder = (from, to) =>
     setSet((prev) => {
-      if (i <= 0) return prev
+      if (from === to || from < 0 || to < 0) return prev
       const next = [...prev]
-      ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
-      return next
-    })
-  const moveDown = (i) =>
-    setSet((prev) => {
-      if (i >= prev.length - 1) return prev
-      const next = [...prev]
-      ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
       return next
     })
 
@@ -173,8 +141,6 @@ export default function SetBuilder({
       )
       .slice(0, 20)
   }, [query, allTracks])
-
-  const canNudge = last?.energy_score != null
 
   return (
     <div className="builder">
@@ -289,57 +255,32 @@ export default function SetBuilder({
           </div>
 
           <div className="builder-grid">
-            <SetTimeline set={set} onUndo={undo} onMoveUp={moveUp} onMoveDown={moveDown} />
+            <SetTimeline set={set} onUndo={undo} onRemove={removeAt} onReorder={reorder} />
 
-          <section className="next-panel">
-            <div className="next-head">
-              <h2>Siguiente track</h2>
-              <button className="ghost-btn" onClick={reset}>Empezar de nuevo</button>
-            </div>
-
-            <div className="controls">
-              <div className="segmented" role="group" aria-label="Energía objetivo">
-                <button
-                  className={energyDir === 'menos' ? 'on' : ''}
-                  onClick={() => setEnergyDir('menos')}
-                  disabled={!canNudge}
-                  title={canNudge ? '' : 'El track actual no tiene energía'}
-                >
-                  ▼ más tranqui
-                </button>
-                <button
-                  className={energyDir === 'similar' ? 'on' : ''}
-                  onClick={() => setEnergyDir('similar')}
-                >
-                  ≈ similar
-                </button>
-                <button
-                  className={energyDir === 'mas' ? 'on' : ''}
-                  onClick={() => setEnergyDir('mas')}
-                  disabled={!canNudge}
-                  title={canNudge ? '' : 'El track actual no tiene energía'}
-                >
-                  ▲ más movido
-                </button>
+            <section className="next-panel">
+              <div className="next-head">
+                <h2>Siguiente track</h2>
+                <button className="ghost-btn" onClick={reset}>Empezar de nuevo</button>
               </div>
 
-              <label className="mode-field">
-                Modo
-                <select value={mode} onChange={(e) => setMode(e.target.value)}>
-                  <option value="realista">Realista</option>
-                  <option value="limpio">Limpio</option>
-                </select>
-              </label>
-            </div>
+              <div className="controls">
+                <label className="mode-field">
+                  Modo
+                  <select value={mode} onChange={(e) => setMode(e.target.value)}>
+                    <option value="limpio">Lossless</option>
+                    <option value="realista">Compressed</option>
+                  </select>
+                </label>
+              </div>
 
-            <CandidateList
-              status={candStatus}
-              error={candError}
-              candidates={candidates}
-              onPick={addCandidate}
-              onRetry={loadCandidates}
-            />
-          </section>
+              <CandidateList
+                status={candStatus}
+                error={candError}
+                candidates={candidates}
+                onPick={addCandidate}
+                onRetry={loadCandidates}
+              />
+            </section>
           </div>
         </>
       )}

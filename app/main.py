@@ -118,9 +118,10 @@ def next_candidates(
 ):
     """Dado un track actual, devuelve los mejores candidatos para el siguiente track del set.
 
-    Filtros duros: BPM +/-2 y Camelot compatible (misma/+-1/relativo/+7 energy boost). Ranking:
-    genero -> energia -> transicion segura antes que +7 -> BPM. Excluye el track actual y usa
-    solo representantes. Un candidato sin key/energia aparece despriorizado y marcado en `reasons`.
+    Filtros duros: BPM +/-2 y Camelot compatible (misma/+-1/relativo/+7 energy boost). Ranking
+    (Sprint 31): por ENERGIA (cercania al track actual) -> transicion segura antes que +7 -> BPM;
+    el genero NO ordena. Excluye el track actual y usa solo representantes. Un candidato sin
+    key/energia aparece despriorizado y marcado en `reasons`.
     Con `playlist_ids`, el pool se restringe a esas playlists/carpetas (union, carpetas expandidas)
     y el sugeridor NO vuelve a filtrar por genero (el pool ya eligio los generos): solo combina por
     BPM/tonalidad/energia dentro del pool. Sin `playlist_ids`, aplica el filtro de genero (mismo + vecinos).

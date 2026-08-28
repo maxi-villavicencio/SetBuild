@@ -257,12 +257,13 @@ tbody tr:last-child td { border-bottom: none; }
 .set-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .set-list li {
   display: grid;
-  grid-template-columns: 20px 26px minmax(0, 1fr) auto auto 84px auto;
+  grid-template-columns: 18px 20px 26px minmax(0, 1fr) auto auto 84px 24px;
   gap: 10px;
   align-items: center;
   padding: 7px 8px;
   border-radius: 6px;
   font-size: 13px;
+  background: var(--panel);
 }
 .set-list li:hover { background: var(--panel-2); }
 .set-list .pos { color: var(--text-dim); text-align: right; }
@@ -273,21 +274,35 @@ tbody tr:last-child td { border-bottom: none; }
 .set-meta { color: var(--text-dim); }
 .set-energy, .cand-energy { display: inline-flex; align-items: center; gap: 6px; }
 
-.reorder { display: inline-flex; flex-direction: column; gap: 2px; }
-.reorder button {
-  background: var(--panel-2);
+/* Drag & drop (@dnd-kit): manija de arrastre + fila que se está arrastrando. */
+.drag-handle {
+  background: transparent;
+  border: none;
   color: var(--text-dim);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  width: 22px;
-  height: 16px;
+  cursor: grab;
+  font-size: 14px;
   line-height: 1;
-  font-size: 11px;
-  cursor: pointer;
-  padding: 0;
+  padding: 2px;
+  touch-action: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
-.reorder button:hover:not(:disabled) { color: var(--text); border-color: var(--accent-dim); }
-.reorder button:disabled { opacity: 0.3; cursor: not-allowed; }
+.drag-handle:hover { color: var(--text); }
+.drag-handle:active { cursor: grabbing; }
+.set-list li.dragging { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); background: var(--panel-2); }
+
+.set-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px;
+  border-radius: 4px;
+}
+.set-remove:hover { color: #ff7b7b; }
 
 /* --- Controles --- */
 .controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }

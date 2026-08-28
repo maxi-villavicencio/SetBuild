@@ -72,6 +72,11 @@ Detalles:
   sugeridor solo combina por **BPM / tonalidad / energía** dentro del pool (el género queda como
   dato/etiqueta, no excluye). **Sin pool**, el sugeridor **sí** aplica el filtro de género (mismo
   + vecinos compatibles). Los filtros duros BPM ±2 y Camelot no cambian en ningún caso.
+- **El orden de los candidatos NO depende del género** (Sprint 31). La lista del sugeridor se
+  ordena SIEMPRE por **cercanía de energía** al track actual y, dentro de energías parecidas, por
+  **transiciones seguras** (misma key / adyacente / relativo) **antes que el energy boost (+7)** —
+  de lo más suave y seguro (arriba) a lo más movido/audaz (abajo). Esto vale **con y sin pool**.
+  El género dejó de participar del orden; sin pool solo **excluye** incompatibles (no ordena).
 
 ## Jerarquía de filtros del armador
 

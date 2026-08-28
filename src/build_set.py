@@ -177,12 +177,13 @@ def save_set(order, name):
 # Jerarquia (Sprint 11):
 #   Filtros DUROS (no cumplen -> no aparecen): BPM +/-2 absoluto; Camelot compatible
 #     (misma / +-1 / relativo, reusando camelot.py; +7 solo con energy_boost).
-#   Ranking: 1) genero (mismo -> compatible -> sin genero), 2) energia, 3) BPM.
+#   Ranking (Sprint 31): por ENERGIA (cercania al track actual) -> seguras antes que +7 -> BPM.
+#     El genero YA NO ordena (ni con pool ni sin pool): de lo mas suave y seguro a lo mas audaz.
 #   Degradacion con gracia: sin genero = compatible con todo; sin camelot/BPM pasa pero
 #     despriorizado; sin energia se hunde por distancia.
 # El filtro de genero se aplica UNA vez (Sprint 28): con pool activo el pool reemplaza el
 #   filtro de genero (el sugeridor solo combina por BPM/tonalidad/energia dentro del pool);
-#   sin pool, el sugeridor aplica el filtro de genero (mismo + vecinos). Ver genre_filter. Nada rompe.
+#   sin pool, el genero solo EXCLUYE incompatibles (mismo + vecinos), pero no ordena. Ver genre_filter.
 
 _ENERGY_SIMILAR = 0.75  # margen para considerar la energia "similar" al objetivo
 _BPM_HARD = 2.0         # filtro duro de BPM: +/-2 absoluto respecto del track actual
@@ -248,17 +249,16 @@ def next_candidates(current, pool, target_energy=None, limit=None, genre_filter=
     limit: None (default) = TODOS los compatibles, ordenados; un entero recorta a ese tope.
 
     Filtros duros: BPM +/-2 y Camelot compatible (misma/+-1/relativo/+7, reusa camelot.py con
-    el energy boost SIEMPRE habilitado en el sugeridor). Ranking:
-      genero -> (datos completos) -> nivel de energia -> transicion segura antes que +7 ->
-      energia fina -> BPM.
-    El +7 (energy boost) suma opciones pero no se pone arriba de una mezcla segura de energia
-    equivalente. Degradacion con gracia: None de genero nunca excluye; sin camelot/BPM pasa
-    despriorizado; sin energia se hunde por distancia.
+    el energy boost SIEMPRE habilitado en el sugeridor). Ranking (Sprint 31):
+      (datos completos) -> nivel de energia (cercania al actual) -> transicion segura antes que +7
+      -> energia fina -> BPM.
+    El genero NO participa del orden. El +7 (energy boost) suma opciones pero no se pone arriba de
+    una mezcla segura de energia equivalente. Degradacion con gracia: None de genero nunca excluye;
+    sin camelot/BPM pasa despriorizado; sin energia se hunde por distancia.
 
-    genre_filter: si True (sin pool), el genero filtra (excluye incompatibles) y ordena como
-    siempre. Si False (hay pool activo), el genero NO excluye ni ordena: el usuario ya eligio los
-    generos al armar el pool, asi que el sugeridor solo combina por BPM/tonalidad/energia dentro
-    del pool. El genero sigue como dato/etiqueta (y como motivo cuando aplica), pero no achica.
+    genre_filter: si True (sin pool), el genero EXCLUYE incompatibles (mismo + vecinos) pero NO
+    ordena. Si False (hay pool activo), el genero no excluye ni ordena: el usuario ya eligio los
+    generos al armar el pool. En ambos casos el genero queda solo como dato/etiqueta (y motivo).
     """
     cur_cam = current.get("camelot")
     cur_bpm = current.get("bpm")
@@ -277,15 +277,13 @@ def next_candidates(current, pool, target_energy=None, limit=None, genre_filter=
         if key_status == "exclude":
             continue
         g_rank, g_reason = _genre_rank(cur_genre, t.get("genre_canonical"))
+        # El genero ya NO participa del orden (Sprint 31). Sin pool sigue EXCLUYENDO incompatibles
+        # (Sprint 28 intacto); con pool no excluye. En ambos casos queda solo como dato/motivo.
         if genre_filter:
             if g_rank is None:
                 continue  # sin pool: genero no compatible -> excluir
-            g_sort = g_rank
-        else:
-            # Con pool activo: el genero no excluye ni ordena (queda como dato/motivo informativo).
-            g_sort = 0
-            if g_rank is None:
-                g_reason = None
+        elif g_rank is None:
+            g_reason = None  # con pool: no excluye; sin motivo de genero si no matchea
 
         e_dist, e_reason = _energy_reason(t.get("energy_score"), target)
         incompleto = 1 if (key_status == "gracia" or bpm_status == "gracia") else 0
@@ -295,9 +293,10 @@ def next_candidates(current, pool, target_energy=None, limit=None, genre_filter=
         reasons = [r for r in (g_reason, key_reason, e_reason, bpm_reason) if r]
         cand = {k: t.get(k) for k in _CAND_FIELDS}
         cand["reasons"] = reasons
-        # orden: genero -> completo -> nivel de energia -> segura antes que +7 -> energia fina -> BPM
-        # (con pool, g_sort=0 para todos => el orden arranca por energia)
-        scored.append(((g_sort, incompleto, e_level, boost_flag, e_dist, bpm_dist), cand))
+        # orden (Sprint 31): SIEMPRE por energia -> completo -> nivel de energia -> segura antes que
+        # +7 -> energia fina -> BPM. El genero NO ordena (con o sin pool); de lo mas suave y seguro
+        # (arriba) a lo mas movido/audaz (abajo).
+        scored.append(((incompleto, e_level, boost_flag, e_dist, bpm_dist), cand))
 
     scored.sort(key=lambda x: x[0])
     ordered = [cand for _, cand in scored]
